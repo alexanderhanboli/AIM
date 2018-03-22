@@ -284,15 +284,15 @@ for ep in range(1,epoch+1):
                 recons_2 = X_rec2.cpu().data.numpy().transpose(0, 2, 3, 1)  # 3
 
             # Save images
-            save_images(origins[:4 * 4, :, :, :], [4, 4],
+            utils.save_images(origins[:4 * 4, :, :, :], [4, 4],
                           '/output/original' + '_epoch%03d' % ep + '.png')
-            save_images(samples[:4 * 4, :, :, :], [4, 4],
+            utils.save_images(samples[:4 * 4, :, :, :], [4, 4],
                           '/output/random' + '_epoch%03d' % ep + '.png')
-            save_images(recons[:4 * 4, :, :, :], [4, 4],
+            utils.save_images(recons[:4 * 4, :, :, :], [4, 4],
                           '/output/reconstructed' + '_epoch%03d' % ep + '.png')
-            save_images(recons_1[:4 * 4, :, :, :], [4, 4],
+            utils.save_images(recons_1[:4 * 4, :, :, :], [4, 4],
                         '/output/reconstructed_1' + '_epoch%03d' % ep + '.png')
-            save_images(recons_2[:4 * 4, :, :, :], [4, 4],
+            utils.save_images(recons_2[:4 * 4, :, :, :], [4, 4],
                         '/output/reconstructed_2' + '_epoch%03d' % ep + '.png')
 
             break
