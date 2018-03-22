@@ -112,8 +112,8 @@ class Encoder(nn.Module):
         elif dataset == 'cifar10':
             self.input_height = 32
             self.input_width = 32
-            self.input_dim = z_dim # z dim
-            self.output_dim = 3
+            self.input_dim = 3
+            self.output_dim = z_dim
 
         self.conv = nn.Sequential(
             nn.Conv2d(self.input_dim, 64, 4, 2, 1),
@@ -162,9 +162,9 @@ class Discriminator(nn.Module):
         elif dataset == 'cifar10':
             self.input_height = 32
             self.input_width = 32
-            self.input_dim = z_dim # z dim
-            self.output_dim = 3
-            
+            self.input_dim = 3
+            self.output_dim = 1
+
         self.conv = nn.Sequential(
             nn.Conv2d(self.input_dim, 64, 4, 2, 1),
             nn.LeakyReLU(0.2),
@@ -188,9 +188,9 @@ class Discriminator(nn.Module):
 
         return x
 
-G = Generator()
-E = Encoder()
-D = Discriminator()
+G = Generator(dataset=dset, z_dim=z_dim)
+E = Encoder(dataset=dset, z_dim=z_dim)
+D = Discriminator(dataset=dset)
 
 # cuda
 if torch.cuda.is_available():
