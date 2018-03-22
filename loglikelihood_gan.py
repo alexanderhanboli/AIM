@@ -30,7 +30,6 @@ batch_size = 64
 z_dim = 64
 X_height = train_dataset.train_data.shape[1] # 28
 X_width = train_dataset.train_data.shape[2] # 28
-h_dim = 64
 lr = 5e-5
 beta1 = 0.5
 beta2 = 0.999

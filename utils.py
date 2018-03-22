@@ -5,6 +5,7 @@ import scipy.misc
 import imageio
 import matplotlib.pyplot as plt
 from torchvision import datasets, transforms
+from torch.autograd import Variable
 
 def load_mnist(dataset):
     data_dir = os.path.join("./data", dataset)
@@ -60,7 +61,7 @@ def load_celebA(dir, transform, batch_size, shuffle):
     # ])
 
     # data_dir = 'data/celebA'  # this path depends on your computer
-    dset = datasets.ImageFolder(dir, transform)
+    dset = datasets.ImageFolder(root=dir, transform=transform)
     data_loader = torch.utils.data.DataLoader(dset, batch_size, shuffle)
 
     return data_loader
@@ -140,3 +141,11 @@ def initialize_weights(net):
         elif isinstance(m, nn.Linear):
             m.weight.data.normal_(0, 0.02)
             m.bias.data.zero_()
+
+def log(x):
+    return torch.log(x + 1e-10)
+
+def to_var(x):
+    if torch.cuda.is_available():
+        x = x.cuda()
+    return Variable(x)
