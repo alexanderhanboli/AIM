@@ -15,10 +15,10 @@ from itertools import *
 """Parameters"""
 batch_size = 64
 z_dim = 64
-lr = 2e-5
+lr = 5e-5
 beta1 = 0.5
 beta2 = 0.999
-dset = 'cifar10'
+dset = 'fashion-mnist'
 epoch = 5
 
 """Load in dataset"""
@@ -176,7 +176,8 @@ class Discriminator(nn.Module):
             nn.Linear(128 * (self.input_height // 4) * (self.input_width // 4), 1024),
             nn.BatchNorm1d(1024),
             nn.LeakyReLU(0.2),
-            nn.Linear(1024, self.output_dim),
+            nn.Linear(1024, 64),
+            nn.Linear(64, self.output_dim),
             nn.Sigmoid(),
         )
         utils.initialize_weights(self)
