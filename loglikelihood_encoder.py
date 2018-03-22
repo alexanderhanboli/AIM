@@ -18,7 +18,7 @@ z_dim = 64
 lr = 5e-5
 beta1 = 0.5
 beta2 = 0.999
-dset = 'fashion-mnist'
+dset = 'cifar10'
 epoch = 5
 
 """Load in dataset"""
