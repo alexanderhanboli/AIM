@@ -14,23 +14,13 @@ from itertools import *
 
 """Generator"""
 class Generator(nn.Module):
-    def __init__(self, dataset = 'mnist', z_dim = 64):
+    def __init__(self, dataset = 'mnist', z_dim = 64, height = None, width = None, pix_level = None):
         super(Generator, self).__init__()
-        if dataset == 'mnist' or dataset == 'fashion-mnist':
-            self.input_height = 28
-            self.input_width = 28
-            self.input_dim = z_dim
-            self.output_dim = 1
-        elif dataset == 'celebA':
-            self.input_height = 64
-            self.input_width = 64
-            self.input_dim = z_dim
-            self.output_dim = 3
-        elif dataset == 'cifar10':
-            self.input_height = 32
-            self.input_width = 32
-            self.input_dim = z_dim
-            self.output_dim = 3
+
+        self.input_height = height
+        self.input_width = width
+        self.input_dim = z_dim
+        self.output_dim = pix_level
 
         self.fc = nn.Sequential(
             nn.Linear(self.input_dim, 1024),
@@ -60,23 +50,13 @@ class Generator(nn.Module):
 class Encoder(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : (64)4c2s-(128)4c2s_BL-FC1024_BL-FC1_S
-    def __init__(self, dataset = 'mnist', z_dim = 64):
+    def __init__(self, dataset = 'mnist', z_dim = 64, height = None, width = None, pix_level = None):
         super(Encoder, self).__init__()
-        if dataset == 'mnist' or dataset == 'fashion-mnist':
-            self.input_height = 28
-            self.input_width = 28
-            self.input_dim = 1
-            self.output_dim = z_dim
-        elif dataset == 'celebA':
-            self.input_height = 64
-            self.input_width = 64
-            self.input_dim = 3
-            self.output_dim = z_dim
-        elif dataset == 'cifar10':
-            self.input_height = 32
-            self.input_width = 32
-            self.input_dim = 3
-            self.output_dim = z_dim
+
+        self.input_height = height
+        self.input_width = width
+        self.input_dim = pix_level
+        self.output_dim = z_dim
 
         self.conv = nn.Sequential(
             nn.Conv2d(self.input_dim, 64, 4, 2, 1),
@@ -110,23 +90,13 @@ class Encoder(nn.Module):
 class Discriminator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : (64)4c2s-(128)4c2s_BL-FC1024_BL-FC1_S
-    def __init__(self, dataset = 'mnist'):
+    def __init__(self, dataset = 'mnist', height = None, width = None, pix_level = None):
         super(Discriminator, self).__init__()
-        if dataset == 'mnist' or dataset == 'fashion-mnist':
-            self.input_height = 28
-            self.input_width = 28
-            self.input_dim = 1
-            self.output_dim = 1
-        elif dataset == 'celebA':
-            self.input_height = 64
-            self.input_width = 64
-            self.input_dim = 3
-            self.output_dim = 1
-        elif dataset == 'cifar10':
-            self.input_height = 32
-            self.input_width = 32
-            self.input_dim = 3
-            self.output_dim = 1
+
+        self.input_height = height
+        self.input_width = width
+        self.input_dim = pix_level
+        self.output_dim = 1
 
         self.conv = nn.Sequential(
             nn.Conv2d(self.input_dim, 64, 4, 2, 1),
@@ -165,28 +135,6 @@ class zXzGAN(object):
         self.z_dim = args.z_dim
         self.model_name = "zXzGAN"
 
-        # networks init
-        self.G = Generator(self.dataset, self.z_dim)
-        self.E = Encoder(self.dataset, self.z_dim)
-        self.D = Discriminator(self.dataset)
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
-        self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
-        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrE, betas=(args.beta1, args.beta2))
-
-        if torch.cuda.is_available():
-            self.G.cuda()
-            self.D.cuda()
-            self.E.cuda()
-            self.BCE_loss = nn.BCELoss().cuda()
-        else:
-            self.BCE_loss = nn.BCELoss()
-
-        print('---------- Networks architecture -------------')
-        utils.print_network(self.G)
-        utils.print_network(self.D)
-        utils.print_network(self.E)
-        print('-----------------------------------------------')
-
         # load dataset
         if self.dataset == 'mnist':
             dset = datasets.MNIST('data/mnist', train=True, download=True,
@@ -210,6 +158,28 @@ class zXzGAN(object):
             self.pix_level = 1
         elif len(dset.train_data.shape) == 4:
             self.pix_level = dset.train_data.shape[3]
+
+        # networks init
+        self.G = Generator(self.dataset, self.z_dim, self.height, self.width, self.pix_level)
+        self.E = Encoder(self.dataset, self.z_dim, self.height, self.width, self.pix_level)
+        self.D = Discriminator(self.dataset, self.height, self.width, self.pix_level)
+        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
+        self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
+        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrE, betas=(args.beta1, args.beta2))
+
+        if torch.cuda.is_available():
+            self.G.cuda()
+            self.D.cuda()
+            self.E.cuda()
+            self.BCE_loss = nn.BCELoss().cuda()
+        else:
+            self.BCE_loss = nn.BCELoss()
+
+        print('---------- Networks architecture -------------')
+        utils.print_network(self.G)
+        utils.print_network(self.D)
+        utils.print_network(self.E)
+        print('-----------------------------------------------')
 
     def __reset_grad(self):
         self.E_optimizer.zero_grad()
