@@ -19,17 +19,17 @@ class Generator(nn.Module):
         if dataset == 'mnist' or dataset == 'fashion-mnist':
             self.input_height = 28
             self.input_width = 28
-            self.input_dim = z_dim # z dim
+            self.input_dim = z_dim
             self.output_dim = 1
         elif dataset == 'celebA':
             self.input_height = 64
             self.input_width = 64
-            self.input_dim = z_dim # z dim
+            self.input_dim = z_dim
             self.output_dim = 3
         elif dataset == 'cifar10':
             self.input_height = 32
             self.input_width = 32
-            self.input_dim = z_dim # z dim
+            self.input_dim = z_dim
             self.output_dim = 3
 
         self.fc = nn.Sequential(
@@ -163,6 +163,7 @@ class zXzGAN(object):
         self.dataset = args.dataset
         self.log_dir = args.log_dir
         self.z_dim = args.z_dim
+        self.model_name = "zXzGAN"
 
         # networks init
         self.G = Generator(self.dataset, self.z_dim)
@@ -279,11 +280,11 @@ class zXzGAN(object):
                 self.__reset_grad()
 
                 """ Plot """
-                if (iter+1) == train_loader.dataset.__len__() // batch_size:
+                if (iter+1) == self.data_loader.dataset.__len__() // self.batch_size:
                     # Print and plot every epoch
                     print('Epoch-{}; D_loss: {:.4}; G_loss: {:.4}; E_loss: {:.4}\n'
-                          .format(ep, D_loss.data[0], G_loss.data[0], E_loss.data[0]))
-                    self.visualize_results(epoch+1)
+                          .format(epoch, D_loss.data[0], G_loss.data[0], E_loss.data[0]))
+                    self.visualize_results(X, epoch+1)
 
                     break
 
@@ -299,7 +300,7 @@ class zXzGAN(object):
                                  # self.epoch)
         # utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
 
-    def visualize_results(self, epoch):
+    def visualize_results(self, X, epoch):
         self.G.eval()
         self.E.eval()
 
@@ -338,15 +339,15 @@ class zXzGAN(object):
 
         # Save images
         utils.save_images(origins[:4 * 4, :, :, :], [4, 4],
-                      '/output/original' + '_epoch%03d' % ep + '.png')
+                      '/output/original' + '_epoch%03d' % epoch + '.png')
         utils.save_images(samples[:4 * 4, :, :, :], [4, 4],
-                      '/output/random' + '_epoch%03d' % ep + '.png')
+                      '/output/random' + '_epoch%03d' % epoch + '.png')
         utils.save_images(recons[:4 * 4, :, :, :], [4, 4],
-                      '/output/reconstructed' + '_epoch%03d' % ep + '.png')
+                      '/output/reconstructed' + '_epoch%03d' % epoch + '.png')
         utils.save_images(recons_1[:4 * 4, :, :, :], [4, 4],
-                    '/output/reconstructed_1' + '_epoch%03d' % ep + '.png')
+                    '/output/reconstructed_1' + '_epoch%03d' % epoch + '.png')
         utils.save_images(recons_2[:4 * 4, :, :, :], [4, 4],
-                    '/output/reconstructed_2' + '_epoch%03d' % ep + '.png')
+                    '/output/reconstructed_2' + '_epoch%03d' % epoch + '.png')
 
     def save(self):
         save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
