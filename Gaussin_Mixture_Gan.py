@@ -199,16 +199,15 @@ lr = 5e-5
 beta1 = 0.5
 beta2 = 0.999
 
-
 # Data Loader (Input Pipeline)
 train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                            batch_size=batch_size,
                                            shuffle=True)
 print(train_loader.dataset.__len__())
 
-# test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
-#                                           batch_size=batch_size,
-#                                           shuffle=False)
+valid_loader = torch.utils.data.DataLoader(dataset=valid_dataset,
+                                          batch_size=batch_size,
+                                          shuffle=False)
 
 def log(x):
     return torch.log(x + 1e-10)
@@ -507,45 +506,6 @@ for ep in range(1,epoch+1):
         G_loss.backward()
         G_solver.step()
         reset_grad()
-        if iter % 10000 == 0:
-            print('Epoch-{}; D_loss: {:.4}; G_loss: {:.4}; E_loss: {:.4}\n'
-                  .format(ep, D_loss.data[0], G_loss.data[0], E_loss.data[0]))
-            mu, sigma = E(X)
-            z_ = z.view(-1, z_dim, 1, 1)
-            X_hat = G(z_)
-            mu_ = mu.view(-1, z_dim, 1, 1)
-            X_rec = G(mu_)
-            eps = to_var(torch.randn(batch_size, z_dim))
-            z1 = mu + eps * torch.exp(sigma / 2.0)
-            z1 = z1.view(-1, z_dim, 1, 1)
-            X_rec1 = G(z1)
-            eps = to_var(torch.randn(batch_size, z_dim))
-            z2 = mu + eps * torch.exp(sigma / 2.0)
-            z2 = z2.view(-1, z_dim, 1, 1)
-            X_rec2 = G(z2)
-            if torch.cuda.is_available():
-                samples = X_hat.cpu().data.numpy().transpose(0, 2, 3, 1)  # 1
-                origins = X.cpu().data.numpy().transpose(0, 2, 3, 1)  # 2
-                recons = X_rec.cpu().data.numpy().transpose(0, 2, 3, 1)  # 3
-                recons_1 = X_rec1.cpu().data.numpy().transpose(0, 2, 3, 1)  # 3
-                recons_2 = X_rec2.cpu().data.numpy().transpose(0, 2, 3, 1)  # 3
-            else:
-                samples = X_hat.data.numpy().transpose(0, 2, 3, 1)
-                origins = X.data.numpy().transpose(0, 2, 3, 1)  # 2
-                recons = X_rec.cpu().data.numpy().transpose(0, 2, 3, 1)  # 3
-                recons_1 = X_rec1.data.numpy().transpose(0, 2, 3, 1)  # 3
-                recons_2 = X_rec2.cpu().data.numpy().transpose(0, 2, 3, 1)
-                # Save images
-            save_images(origins[:4 * 4, :, :, :], [4, 4],
-                            './celeb_output/original' + '_epoch%03d' % ep + '.png')
-            save_images(samples[:4 * 4, :, :, :], [4, 4],
-                            './celeb_output/random' + '_epoch%03d' % ep + '.png')
-            save_images(recons[:4 * 4, :, :, :], [4, 4],
-                            './celeb_output/reconstructed' + '_epoch%03d' % ep + '.png')
-            save_images(recons_1[:4 * 4, :, :, :], [4, 4],
-                            './celeb_output/reconstructed_1' + '_epoch%03d' % ep + '.png')
-            save_images(recons_2[:4 * 4, :, :, :], [4, 4],
-                            './celeb_output/reconstructed_2' + '_epoch%03d' % ep + '.png')
 
         """ Plot """
         if (iter + 1) == train_loader.dataset.__len__() // batch_size:
@@ -591,4 +551,3 @@ for ep in range(1,epoch+1):
                         './celeb_output/reconstructed_2' + '_epoch%03d' % ep + '.png')
 
             break
-
