@@ -52,7 +52,7 @@ def load_mnist(dataset):
     y_vec = torch.from_numpy(y_vec).type(torch.FloatTensor)
     return X, y_vec
 
-def load_celebA(dir, transform, batch_size, shuffle):
+def load_celebA(dir, transform):
     # transform = transforms.Compose([
     #     transforms.CenterCrop(160),
     #     transform.Scale(64)
@@ -62,9 +62,8 @@ def load_celebA(dir, transform, batch_size, shuffle):
 
     # data_dir = 'data/celebA'  # this path depends on your computer
     dset = datasets.ImageFolder(root=dir, transform=transform)
-    data_loader = torch.utils.data.DataLoader(dset, batch_size, shuffle)
 
-    return data_loader
+    return dset
 
 
 def print_network(net):
