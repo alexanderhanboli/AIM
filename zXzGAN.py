@@ -77,6 +77,7 @@ class Encoder(nn.Module):
             nn.LeakyReLU(0.2),
             nn.Linear(1024, self.output_dim),
         )
+        utils.initialize_weights(self)
 
     def forward(self, input):
         x = self.conv(input)

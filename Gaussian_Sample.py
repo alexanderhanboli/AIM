@@ -9,11 +9,12 @@ from fuel import config
 from fuel.datasets import H5PYDataset, IndexableDataset
 from fuel.transformers.defaults import uint8_pixels_to_floatX
 from fuel.utils import find_in_data_path
-import numpy as np
+
 import itertools
 from fuel.streams import DataStream
 from fuel.schemes import ShuffledScheme
 import numpy.random as npr
+
 import torch
 import torch.nn as nn
 import torch.autograd as autograd
@@ -23,7 +24,7 @@ import torchvision.datasets as dsets
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 import torch.nn.functional as F
-import numpy as np
+
 import scipy.misc
 import imageio
 import matplotlib.pyplot as plt
@@ -33,6 +34,7 @@ from itertools import *
 from torch.utils.data import Dataset
 from fuel import config
 from fuel.datasets import H5PYDataset, IndexableDataset
+from functools import reduce
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt

@@ -39,3 +39,10 @@ Thumbs.db
 *.pyc
 /__pycache__/*
 /data/*
+
+*.floydexpt
+*.floydignore
+*.ipynb_checkpoints/
+floyd_requirements.txt
+
+output/*

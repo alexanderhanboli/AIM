@@ -4,6 +4,7 @@ from scipy.stats import multivariate_normal
 
 import numpy as np
 import numpy.random as npr
+import utils
 
 from fuel import config
 from fuel.datasets import H5PYDataset, IndexableDataset
@@ -117,39 +118,42 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
 
         self.fc = nn.Sequential(
-            nn.Linear(z_dim, 1024),
-            nn.BatchNorm1d(1024),
-            nn.LeakyReLU(),
-            nn.Linear(1024, 1024),
-            nn.BatchNorm1d(1024),
-            nn.LeakyReLU(),
-            nn.Linear(1024, z_dim),
+            nn.Linear(z_dim, 512),
+            nn.BatchNorm1d(512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 512),
+            nn.BatchNorm1d(512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, z_dim),
         )
 
     def forward(self, z):
         x = self.fc(z)
         return x
 
-
 class Discriminator(nn.Module):
     # initializers
-    def __init__(self, d=128):
+    def __init__(self):
         super(Discriminator, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(z_dim, 1024),
-            nn.BatchNorm1d(1024),
-            nn.LeakyReLU(),
-            nn.Linear(1024, 1024),
-            nn.BatchNorm1d(1024),
-            nn.LeakyReLU(),
-            nn.Linear(1024, 1),
-            nn.Sigmoid()
+            nn.Linear(z_dim, 512),
+            nn.BatchNorm1d(512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 512),
+            nn.BatchNorm1d(512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, 1),
+            nn.Sigmoid(),
         )
-
-    # weight_init
-    def weight_init(self, mean, std):
-        for m in self._modules:
-            normal_init(self._modules[m], mean, std)
+        utils.initialize_weights(self)
 
     # forward method
     def forward(self, input):
@@ -159,32 +163,28 @@ class Discriminator(nn.Module):
 
 class Encoder(nn.Module):
     # initializers
-    def __init__(self, d=128):
+    def __init__(self):
         super(Encoder, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(z_dim, 1024),
-            nn.BatchNorm1d(1024),
+            nn.Linear(z_dim, 512),
+            nn.BatchNorm1d(512),
             nn.LeakyReLU(0.2),
-            nn.Linear(1024, 1024),
-            nn.BatchNorm1d(1024),
+            nn.Linear(512, 512),
             nn.LeakyReLU(0.2),
         )
-
         self.fc_mu = nn.Sequential(
-            nn.Linear(1024, z_dim)
-
+            nn.Linear(512, 512),
+            nn.BatchNorm1d(512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, z_dim)
         )
         self.fc_sigma = nn.Sequential(
-            nn.Linear(1024, z_dim),
-
-
-
+            nn.Linear(512, 512),
+            nn.BatchNorm1d(512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, z_dim),
         )
-
-    # weight_init
-    def weight_init(self, mean, std):
-        for m in self._modules:
-            normal_init(self._modules[m], mean, std)
+        utils.initialize_weights(self)
 
     # forward method
     def forward(self, input):
@@ -199,15 +199,10 @@ E = Encoder()
 G = Generator()
 D = Discriminator()
 
-# E.weight_init(0, 1)
-# G.weight_init(0,1)
-# D.weight_init(0,1)
-
 if torch.cuda.is_available():
     E.cuda()
     G.cuda()
     D.cuda()
-
 
 def reset_grad():
     E.zero_grad()
@@ -219,18 +214,17 @@ D_solver = optim.Adam(D.parameters(), lr=lr, betas=(beta1, beta2))
 G_solver = optim.Adam(G.parameters(), lr=lr, betas=(beta1, beta2))
 E_solver = optim.Adam(E.parameters(), lr=lr, betas=(beta1, beta2))
 
-epoch = 100
+epoch = 20
+D.train()
 for ep in range(1,epoch+1):
-
     print("Epoch {} started!".format(ep))
-    # epoch_start_time = time.time()
+    G.train()
+    E.train()
     for iter, (X, _) in enumerate(train_loader):
-
         X = to_var(X)
 
         """Discriminator"""
-        z = to_var(torch.randn(X.size(0), z_dim))
-
+        z = to_var(torch.randn(batch_size, z_dim))
         X_hat = G(z)
 
         D_real = D(X)
@@ -242,13 +236,10 @@ for ep in range(1,epoch+1):
         reset_grad()
 
         """Encoder"""
-        z = to_var(torch.randn(X.size(0), z_dim))
-
+        z = to_var(torch.randn(batch_size, z_dim))
         X_hat = G(z)
-
         z_mu, z_sigma = E(X_hat)
-        x_mu, x_sigma = E(X)
-        E_loss = torch.mean(torch.mean((z - z_mu) ** 2 * torch.exp(-z_sigma)/2 + z_sigma/2+2, 1))
+        E_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma, 1))
 
         # Optimize
         E_loss.backward()
@@ -256,89 +247,75 @@ for ep in range(1,epoch+1):
         reset_grad()
 
         """Generator"""
-        #z = to_var(torch.randn(X.size(0), z_dim))
-
+        z = to_var(torch.randn(batch_size, z_dim))
         X_hat = G(z)
         D_fake = D(X_hat)
         z_mu, z_sigma = E(X_hat)
-        x_mu, x_sigma = E(X)
 
-        mode_loss = torch.mean(torch.mean((z - z_mu) ** 2 * torch.exp(-z_sigma)/2 + z_sigma/2+2, 1))
+        mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma, 1))
         G_loss = -torch.mean(log(D_fake)) + mode_loss
         # Optimize
         G_loss.backward()
         G_solver.step()
         reset_grad()
+
         if (iter + 1) == train_loader.dataset.__len__() // batch_size:
             print('Epoch-{}; D_loss: {:.4}; G_loss: {:.4}; E_loss: {:.4}\n'
                   .format(ep, D_loss.data[0], G_loss.data[0], E_loss.data[0]))
             G.eval()
             E.eval()
-            D.eval()
+
             Recon = []
-
-
             Original = []
-
-
             Z = []
-
+            # Random = []
             color_vec = []
-            for iter, (X, label) in enumerate(valid_loader):
 
+            for iter, (X, label) in enumerate(valid_loader):
+                z = to_var(torch.randn(batch_size, z_dim))
                 X = to_var(X)
                 label = to_var(label)
-
                 z_mu, z_sigma = E(X)
-
-
                 X_reconstruc = G(z_mu)
-
+                # X_random = G(z)
 
                 Original += [x for x in to_np(X)]
-
                 Recon += [x for x in to_np(X_reconstruc)]
-
-
                 Z += [x for x in to_np(z_mu)]
-
+                # Random += [x for x in to_np(X_random)]
                 color_vec+= [x for x in to_np(label)]
-                #print(color_vec)
-                #print(Original[:,0])
 
 
-
-            #print(Z)
-            G.train()
-            E.train()
-            D.train()
             Original = np.array(Original)
             Recon = np.array(Recon)
             Z = np.array(Z)
+            # Random = np.array(Random)
 
             cmap = plt.get_cmap('gnuplot')
-
             cmap = plt.cm.jet
             cmaplist = [cmap(i) for i in range(cmap.N)]
             cmap = cmap.from_list('Custom cmap', cmaplist, cmap.N)
 
             fig, ax = plt.subplots(1, 1, figsize=(6, 6))
             ax.scatter(Original[:,0], Original[:,1], c=color_vec, cmap=cmap)
-
-
-            fig.savefig('./Gaussian_output/Original' + '_epoch%03d' % ep + '.png')
+            fig.savefig('/output/Original' + '_epoch%03d' % ep + '.png')
             plt.close()
             #
             fig, ax = plt.subplots(1, 1, figsize=(6, 6))
-            ax.scatter(Recon[:,0], Recon[:,1], c = color_vec, cmap=cmap)
-
+            ax.scatter(Recon[:,0], Recon[:,1], c=color_vec, cmap=cmap)
             #ax.set_title('X')
-            fig.savefig('./Gaussian_output/X_reconstruc' + '_epoch%03d' % ep + '.png')
+            fig.savefig('/output/X_reconstruc' + '_epoch%03d' % ep + '.png')
             plt.close()
 
             fig, ax = plt.subplots(1, 1, figsize=(6, 6))
-            ax.scatter(Z[:, 0], Z[:, 1], c=color_vec, cmap=cmap)
-
-            fig.savefig('./Gaussian_output/Z' + '_epoch%03d' % ep + '.png')
+            ax.scatter(Z[:,0], Z[:,1], c=color_vec, cmap=cmap)
+            fig.savefig('/output/Z' + '_epoch%03d' % ep + '.png')
             plt.close()
+
+            # fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+            # ax.scatter(Random[:,0], Random[:,1], c=color_vec, cmap=cmap)
+            # fig.savefig('output/Random' + '_epoch%03d' % ep + '.png')
+            # plt.close()
+
             print("Finished!")
+            break
