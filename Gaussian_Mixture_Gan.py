@@ -63,7 +63,7 @@ z_dim = 2
 X_height = 218 # 28
 X_width = 178 # 28
 h_dim = 64
-lr = 5e-5
+lr = 1e-3
 beta1 = 0.5
 beta2 = 0.999
 
@@ -127,16 +127,14 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
 
         self.fc = nn.Sequential(
-            nn.Linear(z_dim, 10),
-            nn.BatchNorm1d(10),
+            nn.Linear(z_dim, 1024),
+            nn.BatchNorm1d(1024),
             nn.LeakyReLU(),
-            nn.Linear(10, 10),
-            nn.BatchNorm1d(10),
+            nn.Linear(1024, 1024),
+            nn.BatchNorm1d(1024),
             nn.LeakyReLU(),
-            nn.Linear(10, z_dim),
-            
+            nn.Linear(1024, z_dim),
         )
-
 
     def forward(self, z):
         x = self.fc(z)
@@ -148,13 +146,13 @@ class Discriminator(nn.Module):
     def __init__(self, d=128):
         super(Discriminator, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(z_dim, 10),
-            nn.BatchNorm1d(10),
+            nn.Linear(z_dim, 1024),
+            nn.BatchNorm1d(1024),
             nn.LeakyReLU(),
-            nn.Linear(10, 10),
-            nn.BatchNorm1d(10),
+            nn.Linear(1024, 1024),
+            nn.BatchNorm1d(1024),
             nn.LeakyReLU(),
-            nn.Linear(10, 1),
+            nn.Linear(1024, 1),
             nn.Sigmoid()
         )
 
@@ -174,20 +172,22 @@ class Encoder(nn.Module):
     def __init__(self, d=128):
         super(Encoder, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(z_dim, 10),
-            nn.BatchNorm1d(10),
+            nn.Linear(z_dim, 1024),
+            nn.BatchNorm1d(1024),
             nn.LeakyReLU(0.2),
-            nn.Linear(10, 10),
-            nn.BatchNorm1d(10),
+            nn.Linear(1024, 1024),
+            nn.BatchNorm1d(1024),
             nn.LeakyReLU(0.2),
         )
 
         self.fc_mu = nn.Sequential(
-            nn.Linear(10, z_dim)
+            nn.Linear(1024, z_dim)
 
         )
         self.fc_sigma = nn.Sequential(
-            nn.Linear(10, z_dim)
+            nn.Linear(1024, z_dim),
+
+
 
         )
 
@@ -200,7 +200,7 @@ class Encoder(nn.Module):
     def forward(self, input):
         x= self.fc(input)
         mu = self.fc_mu(x)
-        sigma = self.fc_sigma(x)
+        sigma = -self.fc_sigma(x)
 
         return mu,sigma
 
@@ -208,6 +208,11 @@ class Encoder(nn.Module):
 E = Encoder()
 G = Generator()
 D = Discriminator()
+
+# E.weight_init(0, 1)
+# G.weight_init(0,1)
+# D.weight_init(0,1)
+
 if torch.cuda.is_available():
     E.cuda()
     G.cuda()
@@ -252,20 +257,23 @@ for ep in range(1,epoch+1):
         X_hat = G(z)
 
         z_mu, z_sigma = E(X_hat)
-        E_loss = torch.mean(torch.mean((z - z_mu) ** 2 * torch.exp(-z_sigma)/2 + z_sigma/2+0.7, 1))  # - loglikehood
+        x_mu, x_sigma = E(X)
+        E_loss = torch.mean(torch.mean((z - z_mu) ** 2 * torch.exp(-z_sigma)/2 + z_sigma/2+2, 1))
+
         # Optimize
         E_loss.backward()
         E_solver.step()
         reset_grad()
 
         """Generator"""
-        z = to_var(torch.randn(X.size(0), z_dim))
+        #z = to_var(torch.randn(X.size(0), z_dim))
 
         X_hat = G(z)
         D_fake = D(X_hat)
         z_mu, z_sigma = E(X_hat)
-        #print(z_mu, z_sigma)
-        mode_loss = torch.mean(torch.mean((z - z_mu) ** 2 * torch.exp(-z_sigma)/2 + z_sigma/2+0.7, 1))
+        x_mu, x_sigma = E(X)
+
+        mode_loss = torch.mean(torch.mean((z - z_mu) ** 2 * torch.exp(-z_sigma)/2 + z_sigma/2+2, 1))
         G_loss = -torch.mean(log(D_fake)) + mode_loss
         # Optimize
         G_loss.backward()
@@ -292,6 +300,7 @@ for ep in range(1,epoch+1):
                 label = to_var(label)
 
                 z_mu, z_sigma = E(X)
+
 
                 X_reconstruc = G(z_mu)
 
