@@ -120,14 +120,16 @@ class Generator(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(z_dim, 512),
             nn.BatchNorm1d(512),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
             nn.Linear(512, 512),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
             nn.Linear(512, 512),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
             nn.Linear(512, 512),
             nn.BatchNorm1d(512),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
             nn.Linear(512, z_dim),
         )
 
@@ -142,14 +144,14 @@ class Discriminator(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(z_dim, 512),
             nn.BatchNorm1d(512),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
             nn.Linear(512, 512),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
             nn.Linear(512, 512),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
             nn.Linear(512, 512),
             nn.BatchNorm1d(512),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
             nn.Linear(512, 1),
             nn.Sigmoid(),
         )
@@ -168,20 +170,19 @@ class Encoder(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(z_dim, 512),
             nn.BatchNorm1d(512),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
             nn.Linear(512, 512),
-            nn.LeakyReLU(0.2),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
         )
         self.fc_mu = nn.Sequential(
-            nn.Linear(512, 512),
-            nn.BatchNorm1d(512),
-            nn.LeakyReLU(0.2),
-            nn.Linear(512, z_dim)
+            nn.Linear(512, z_dim),
         )
         self.fc_sigma = nn.Sequential(
-            nn.Linear(512, 512),
-            nn.BatchNorm1d(512),
-            nn.LeakyReLU(0.2),
             nn.Linear(512, z_dim),
         )
         utils.initialize_weights(self)
