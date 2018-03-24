@@ -118,19 +118,19 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
 
         self.fc = nn.Sequential(
-            nn.Linear(z_dim, 512),
-            nn.BatchNorm1d(512),
+            nn.Linear(z_dim, 400),
+            nn.BatchNorm1d(400),
             nn.ReLU(),
-            nn.Linear(512, 512),
+            nn.Linear(400, 400),
+            nn.BatchNorm1d(400),
             nn.ReLU(),
-            nn.Linear(512, 512),
+            nn.Linear(400, 400),
+            nn.BatchNorm1d(400),
             nn.ReLU(),
-            nn.Linear(512, 512),
+            nn.Linear(400, 400),
+            nn.BatchNorm1d(400),
             nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Linear(512, z_dim),
+            nn.Linear(400, 2)
         )
 
     def forward(self, z):
@@ -142,17 +142,16 @@ class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(z_dim, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Linear(512, 1),
+            nn.Linear(z_dim, 200 * 5),
+        )
+        self.fcmax1 = nn.Sequential(
+            nn.Linear(200, 200 * 5),
+        )
+        self.fcmax2 = nn.Sequential(
+            nn.Linear(200, 200 * 5),
+        )
+        self.fo = nn.Sequential(
+            nn.Linear(200, 1),
             nn.Sigmoid(),
         )
         utils.initialize_weights(self)
@@ -160,6 +159,15 @@ class Discriminator(nn.Module):
     # forward method
     def forward(self, input):
         x = self.fc(input)
+        x = x.view(-1, 5, 200)
+        x = torch.max(x, 1)[0] # maxout layer 1
+        x = self.fcmax1(x)
+        x = x.view(-1, 5, 200)
+        x = torch.max(x, 1)[0] # maxout layer 2
+        x = self.fcmax2(x)
+        x = x.view(-1, 5, 200)
+        x = torch.max(x, 1)[0] # maxout layer 3
+        x = self.fo(x)
 
         return x
 
@@ -168,22 +176,18 @@ class Encoder(nn.Module):
     def __init__(self):
         super(Encoder, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(z_dim, 512),
-            nn.BatchNorm1d(512),
+            nn.Linear(z_dim, 400),
+            nn.BatchNorm1d(400),
             nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.BatchNorm1d(512),
+            nn.Linear(400, 400),
+            nn.BatchNorm1d(400),
             nn.ReLU(),
         )
         self.fc_mu = nn.Sequential(
-            nn.Linear(512, z_dim),
+            nn.Linear(400, z_dim),
         )
         self.fc_sigma = nn.Sequential(
-            nn.Linear(512, z_dim),
+            nn.Linear(400, z_dim),
         )
         utils.initialize_weights(self)
 
@@ -191,7 +195,7 @@ class Encoder(nn.Module):
     def forward(self, input):
         x= self.fc(input)
         mu = self.fc_mu(x)
-        sigma = -self.fc_sigma(x)
+        sigma = self.fc_sigma(x)
 
         return mu,sigma
 
@@ -240,7 +244,7 @@ for ep in range(1,epoch+1):
         z = to_var(torch.randn(batch_size, z_dim))
         X_hat = G(z)
         z_mu, z_sigma = E(X_hat)
-        E_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma, 1))
+        E_loss = torch.mean(torch.sum(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189 * z_dim, 1))
 
         # Optimize
         E_loss.backward()
@@ -253,8 +257,9 @@ for ep in range(1,epoch+1):
         D_fake = D(X_hat)
         z_mu, z_sigma = E(X_hat)
 
-        mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma, 1))
-        G_loss = -torch.mean(log(D_fake)) + mode_loss
+        mode_loss = torch.mean(torch.sum(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189 * z_dim, 1))
+        g_loss = -torch.mean(log(D_fake))
+        G_loss = g_loss + mode_loss
         # Optimize
         G_loss.backward()
         G_solver.step()
@@ -262,7 +267,7 @@ for ep in range(1,epoch+1):
 
         if (iter + 1) == train_loader.dataset.__len__() // batch_size:
             print('Epoch-{}; D_loss: {:.4}; G_loss: {:.4}; E_loss: {:.4}\n'
-                  .format(ep, D_loss.data[0], G_loss.data[0], E_loss.data[0]))
+                  .format(ep, D_loss.data[0], g_loss.data[0], E_loss.data[0]))
             G.eval()
             E.eval()
 
@@ -272,7 +277,7 @@ for ep in range(1,epoch+1):
             # Random = []
             color_vec = []
 
-            for iter, (X, label) in enumerate(valid_loader):
+            for iter, (X, label) in enumerate(train_loader):
                 z = to_var(torch.randn(batch_size, z_dim))
                 X = to_var(X)
                 label = to_var(label)
