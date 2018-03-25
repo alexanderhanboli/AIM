@@ -60,8 +60,8 @@ valid_dataset = Gaussian_Data(valid_data)
 # parameters
 batch_size = 64
 z_dim = 2
-lr = 5e-4
-beta1 = 0.5
+lr = 1e-4
+beta1 = 0.8
 beta2 = 0.999
 
 # Data Loader (Input Pipeline)
@@ -219,7 +219,7 @@ D_solver = optim.Adam(D.parameters(), lr=lr, betas=(beta1, beta2))
 G_solver = optim.Adam(G.parameters(), lr=lr, betas=(beta1, beta2))
 E_solver = optim.Adam(E.parameters(), lr=lr, betas=(beta1, beta2))
 
-epoch = 50
+epoch = 200
 D.train()
 for ep in range(1,epoch+1):
     print("Epoch {} started!".format(ep))
