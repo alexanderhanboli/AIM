@@ -58,7 +58,7 @@ train_dataset = Gaussian_Data(train_data)
 valid_dataset = Gaussian_Data(valid_data)
 
 # parameters
-batch_size = 64
+batch_size = 100
 z_dim = 2
 lr = 1e-4
 beta1 = 0.8
