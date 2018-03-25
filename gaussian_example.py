@@ -219,7 +219,7 @@ D_solver = optim.Adam(D.parameters(), lr=lr, betas=(beta1, beta2))
 G_solver = optim.Adam(G.parameters(), lr=lr, betas=(beta1, beta2))
 E_solver = optim.Adam(E.parameters(), lr=lr, betas=(beta1, beta2))
 
-epoch = 20
+epoch = 50
 D.train()
 for ep in range(1,epoch+1):
     print("Epoch {} started!".format(ep))
@@ -277,7 +277,7 @@ for ep in range(1,epoch+1):
             # Random = []
             color_vec = []
 
-            for iter, (X, label) in enumerate(train_loader):
+            for iter, (X, label) in enumerate(valid_loader):
                 z = to_var(torch.randn(batch_size, z_dim))
                 X = to_var(X)
                 label = to_var(label)
