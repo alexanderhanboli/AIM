@@ -148,3 +148,8 @@ def to_var(x):
     if torch.cuda.is_available():
         x = x.cuda()
     return Variable(x)
+
+def to_np(x):
+    if torch.cuda.is_available():
+        x = x.cpu()
+    return x.data.numpy()

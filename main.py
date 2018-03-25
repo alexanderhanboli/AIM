@@ -1,12 +1,14 @@
 import argparse, os
 from zXzGAN import zXzGAN
+from gaussian_example import MixedGaussian
 
 """parsing and configuration"""
 def parse_args():
     desc = "zXzGAN pytorch implementation"
     parser = argparse.ArgumentParser(description=desc)
 
-    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'celebA'],
+    parser.add_argument('--root', type=str, default='/output', help='Root of the project')
+    parser.add_argument('--dataset', type=str, default='mixed-Gaussian', choices=['mnist', 'fashion-mnist', 'celebA', 'mixed-Gaussian'],
                         help='The name of dataset')
     parser.add_argument('--epoch', type=int, default=25, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
@@ -60,7 +62,10 @@ def main():
     if args is None:
         exit()
 
-    gan = zXzGAN(args)
+    if args.dataset == 'mixed-Gaussian':
+        gan = MixedGaussian(args)
+    else:
+        gan = zXzGAN(args)
 
     # launch the graph in a session
     gan.train()

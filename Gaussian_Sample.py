@@ -174,6 +174,16 @@ class GaussianMixtureDistribution(object):
                    self.means, self.variances, self.priors)
         return reduce(lambda x, y: x + y, pdfs, 0.0)
 
+class Gaussian_Data(Dataset):
+    def __init__(self, dataset):
+        self.x = torch.from_numpy(np.array(dataset['features'])).type(torch.FloatTensor)
+        self.y = torch.from_numpy(np.array(dataset['label']))
+
+    def __len__(self):
+        return len(self.x)
+
+    def __getitem__(self, idx):
+        return self.x[idx], self.y[idx]
 
 def main():
     data = create_gaussian_mixture_data(
