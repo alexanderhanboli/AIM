@@ -153,3 +153,9 @@ def to_np(x):
     if torch.cuda.is_available():
         x = x.cpu()
     return x.data.numpy()
+
+def generate_z(batch_size, z_dim, prior):
+    if prior == 'normal':
+        return to_var(torch.randn(batch_size, z_dim))
+    elif prior == 'uniform':
+        return to_var(torch.rand(batch_size, z_dim))

@@ -24,6 +24,7 @@ def parse_args():
     parser.add_argument('--beta1', type=float, default=0.5)
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--z_dim', type=int, default=64)
+    parser.add_argument('--prior', type=str, default='normal', choices=['normal', 'uniform'])
 
     return check_args(parser.parse_args())
 

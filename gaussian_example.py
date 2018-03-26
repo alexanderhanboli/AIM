@@ -154,6 +154,7 @@ class MixedGaussian(object):
         self.log_dir = args.log_dir
         self.model_name = "MixedGaussianExample"
         self.z_dim = 2
+        self.prior = args.prior
 
         """Generate data"""
         train_data, valid_data = GS.main()
@@ -218,7 +219,7 @@ class MixedGaussian(object):
                 X = utils.to_var(X)
 
                 """Discriminator"""
-                z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
+                z = utils.generate_z(self.batch_size, self.z_dim, self.prior)
                 X_hat = self.G(z)
                 D_real = self.D(X)
                 D_fake = self.D(X_hat)
@@ -230,7 +231,7 @@ class MixedGaussian(object):
                 self.__reset_grad()
 
                 """Encoder"""
-                z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
+                z = utils.generate_z(self.batch_size, self.z_dim, self.prior)
                 X_hat = self.G(z)
                 z_mu, z_sigma = self.E(X_hat)
                 # - loglikehood
@@ -243,7 +244,7 @@ class MixedGaussian(object):
 
                 """Generator"""
                 # Use both Discriminator and Encoder to update Generator
-                z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
+                z = utils.generate_z(self.batch_size, self.z_dim, self.prior)
                 X_hat = self.G(z)
                 D_fake = self.D(X_hat)
                 z_mu, z_sigma = self.E(X_hat)
