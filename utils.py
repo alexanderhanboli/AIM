@@ -153,3 +153,6 @@ def to_np(x):
     if torch.cuda.is_available():
         x = x.cpu()
     return x.data.numpy()
+
+def to_np(x):
+    return x.data.cpu().numpy()
