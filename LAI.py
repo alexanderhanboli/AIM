@@ -27,15 +27,15 @@ class Generator(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(self.input_dim, 1024),
             nn.BatchNorm1d(1024),
-            nn.ReLU(),
+            nn.LeakyReLU(0.02),
             nn.Linear(1024, 128 * (self.input_height // 4) * (self.input_width // 4)),
             nn.BatchNorm1d(128 * (self.input_height // 4) * (self.input_width // 4)),
-            nn.ReLU(),
+            nn.LeakyReLU(0.02),
         )
         self.deconv = nn.Sequential(
             nn.ConvTranspose2d(128, 64, 4, 2, 1),
             nn.BatchNorm2d(64),
-            nn.ReLU(),
+            nn.LeakyReLU(0.02),
             nn.ConvTranspose2d(64, self.output_dim, 4, 2, 1),
             nn.Sigmoid(),
         )
@@ -62,28 +62,34 @@ class Encoder(nn.Module):
 
         self.conv = nn.Sequential(
             nn.Conv2d(self.input_dim, 64, 4, 2, 1),
-            nn.LeakyReLU(0.2),
+            nn.LeakyReLU(0.02),
             nn.Conv2d(64, 128, 4, 2, 1),
             nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2),
+            nn.LeakyReLU(0.02),
+        )
+        self.fc = nn.Sequential(
+            nn.Linear(128 * (self.input_height // 4) * (self.input_width // 4), 1024),
+            nn.BatchNorm1d(1024),
+            nn.LeakyReLU(0.02),
         )
         self.fc_mu = nn.Sequential(
-            nn.Linear(128 * (self.input_height // 4) * (self.input_width // 4), 1024),
-            nn.BatchNorm1d(1024),
-            nn.LeakyReLU(0.2),
-            nn.Linear(1024, self.output_dim),
+            nn.Linear(1024, 64),
+            nn.BatchNorm1d(64),
+            nn.LeakyReLU(0.02),
+            nn.Linear(64, self.output_dim),
         )
         self.fc_sigma = nn.Sequential(
-            nn.Linear(128 * (self.input_height // 4) * (self.input_width // 4), 1024),
-            nn.BatchNorm1d(1024),
-            nn.LeakyReLU(0.2),
-            nn.Linear(1024, self.output_dim),
+            nn.Linear(1024, 64),
+            nn.BatchNorm1d(64),
+            nn.LeakyReLU(0.02),
+            nn.Linear(64, self.output_dim),
         )
         utils.initialize_weights(self)
 
     def forward(self, input):
         x = self.conv(input)
         x = x.view(-1, 128 * (self.input_height // 4) * (self.input_width // 4))
+        x = self.fc(x)
         mu = self.fc_mu(x)
         sigma = self.fc_sigma(x)
 
@@ -103,18 +109,19 @@ class Discriminator(nn.Module):
 
         self.conv = nn.Sequential(
             nn.Conv2d(self.input_dim, 64, 4, 2, 1),
-            nn.LeakyReLU(0.2),
+            nn.LeakyReLU(0.02),
             nn.Conv2d(64, 128, 4, 2, 1),
             nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2),
+            nn.LeakyReLU(0.02),
         )
         self.fc = nn.Sequential(
             nn.Linear(128 * (self.input_height // 4) * (self.input_width // 4), 1024),
             nn.BatchNorm1d(1024),
-            nn.LeakyReLU(0.2),
-            nn.Linear(1024, 256),
-            nn.LeakyReLU(0.2),
-            nn.Linear(256, self.output_dim),
+            nn.LeakyReLU(0.02),
+            nn.Linear(1024, 64),
+            nn.BatchNorm1d(64),
+            nn.LeakyReLU(0.02),
+            nn.Linear(64, self.output_dim),
             nn.Sigmoid(),
         )
         utils.initialize_weights(self)
@@ -139,6 +146,7 @@ class LAI(object):
         self.log_dir = args.log_dir
         self.z_dim = args.z_dim
         self.model_name = "LAI"
+        self.load_model = args.load_model
 
         # load dataset
         if self.dataset == 'mnist':
@@ -153,6 +161,13 @@ class LAI(object):
                                         download=True, transform=transforms.Compose([transforms.Scale(64), transforms.ToTensor()]))
             valid_dset = datasets.CIFAR10(root='data/mnist', train=False, download=True,
                                     transform=transforms.Compose([transforms.Scale(64), transforms.ToTensor()]))
+            self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
+            self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
+        elif self.dataset == 'svhn':
+            dset = datasets.SVHN(root='data/svhn', split='train',
+                                        download=True, transform=transforms.Compose([transforms.ToTensor()]))
+            valid_dset = datasets.SVHN(root='data/svhn', split='test', download=True,
+                                    transform=transforms.Compose([transforms.ToTensor()]))
             self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
             self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'fashion-mnist':
@@ -174,15 +189,19 @@ class LAI(object):
                                                  shuffle=True)
 
         # image dimensions
-        self.height, self.width = dset.train_data.shape[1:3]
-        if len(dset.train_data.shape) == 3:
-            self.pix_level = 1
-        elif self.dataset == 'cifar10':
-            self.height = 2* self.height
-            self.width = 2 * self.width
-            self.pix_level = dset.train_data.shape[3]
-        elif len(dset.train_data.shape) == 4:
-            self.pix_level = dset.train_data.shape[3]
+        if self.dataset == 'svhn':
+            self.height, self.width = dset.data.shape[2:4]
+            self.pix_level = dset.data.shape[1]
+        else:
+            self.height, self.width = dset.train_data.shape[1:3]
+            if len(dset.train_data.shape) == 3:
+                self.pix_level = 1
+            elif self.dataset == 'cifar10':
+                self.height = 2* self.height
+                self.width = 2 * self.width
+                self.pix_level = dset.train_data.shape[3]
+            elif len(dset.train_data.shape) == 4:
+                self.pix_level = dset.train_data.shape[3]
 
         # networks init
         self.G = Generator(self.dataset, self.z_dim, self.height, self.width, self.pix_level)
@@ -205,6 +224,10 @@ class LAI(object):
         utils.print_network(self.D)
         utils.print_network(self.E)
         print('-----------------------------------------------')
+
+        # load in saved model
+        if self.load_model:
+            self.load()
 
     def __reset_grad(self):
         self.E_optimizer.zero_grad()
@@ -233,10 +256,10 @@ class LAI(object):
             self.E.train()
             epoch_start_time = time.time()
             for iter, (X, _) in enumerate(self.data_loader):
-                X = utils.to_var(X)
+                z = torch.randn(self.batch_size, self.z_dim) # fixed in one iteration
+                X, z = utils.to_var(X), utils.to_var(z)
 
                 """Discriminator"""
-                z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
                 X_hat = self.G(z)
                 D_real = self.D(X)
                 D_fake = self.D(X_hat)
@@ -249,11 +272,10 @@ class LAI(object):
                 self.__reset_grad()
 
                 """Encoder"""
-                #z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
                 X_hat = self.G(z)
                 z_mu, z_sigma = self.E(X_hat)
                 # - loglikehood
-                E_loss = torch.mean(torch.sum(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189, 1))
+                E_loss = torch.mean(torch.sum(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.919, 1))
                 self.train_hist['E_loss'].append(E_loss.data[0])
                 # Optimize
                 E_loss.backward()
@@ -262,11 +284,10 @@ class LAI(object):
 
                 """Generator"""
                 # Use both Discriminator and Encoder to update Generator
-                #z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
                 X_hat = self.G(z)
                 D_fake = self.D(X_hat)
                 z_mu, z_sigma = self.E(X_hat)
-                mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189, 1))
+                mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.919, 1))
                 G_loss = self.BCE_loss(D_fake, self.y_real_)
                 total_loss = G_loss + mode_loss
                 self.train_hist['G_loss'].append(G_loss.data[0])
@@ -297,10 +318,12 @@ class LAI(object):
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
               self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
+        self.save()
 
-        # utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name,
-                                 # self.epoch)
-        # utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
+        # Generate animation of reconstructed plot
+        utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/reconstructed',
+                                 self.epoch)
+        utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
 
     def visualize_results(self, X, epoch):
         self.G.eval()
@@ -369,6 +392,7 @@ class LAI(object):
     def load(self):
         save_dir = os.path.join(self.root, self.save_dir, self.dataset, self.model_name)
 
+        print("Loading the model...")
         self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
         self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
         self.E.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_E.pkl')))
