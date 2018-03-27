@@ -235,7 +235,7 @@ class MixedGaussian(object):
                 X_hat = self.G(z)
                 z_mu, z_sigma = self.E(X_hat)
                 # - loglikehood
-                E_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189 * self.z_dim, 1))
+                E_loss = torch.mean(torch.sum(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189, 1))
                 self.train_hist['E_loss'].append(E_loss.data[0])
                 # Optimize
                 E_loss.backward()
@@ -248,7 +248,7 @@ class MixedGaussian(object):
                 X_hat = self.G(z)
                 D_fake = self.D(X_hat)
                 z_mu, z_sigma = self.E(X_hat)
-                mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189 * self.z_dim, 1))
+                mode_loss = torch.mean(torch.sum(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189, 1))
                 G_loss = self.BCE_loss(D_fake, self.y_real_)
                 total_loss = G_loss + mode_loss
                 self.train_hist['G_loss'].append(G_loss.data[0])

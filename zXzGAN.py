@@ -14,6 +14,8 @@ from itertools import *
 
 """Generator"""
 class Generator(nn.Module):
+    # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
+    # Architecture : FC1024_BR-FC7x7x128_BR-(64)4dc2s_BR-(1)4dc2s_S
     def __init__(self, dataset = 'mnist', z_dim = 64, height = None, width = None, pix_level = None):
         super(Generator, self).__init__()
 
@@ -110,8 +112,9 @@ class Discriminator(nn.Module):
             nn.Linear(128 * (self.input_height // 4) * (self.input_width // 4), 1024),
             nn.BatchNorm1d(1024),
             nn.LeakyReLU(0.2),
-            nn.Linear(1024, 64),
-            nn.Linear(64, self.output_dim),
+            nn.Linear(1024, 256),
+            nn.LeakyReLU(0.2),
+            nn.Linear(256, self.output_dim),
             nn.Sigmoid(),
         )
         utils.initialize_weights(self)
@@ -126,6 +129,7 @@ class Discriminator(nn.Module):
 class zXzGAN(object):
     def __init__(self, args):
         # parameters
+        self.root = args.root
         self.epoch = args.epoch
         self.sample_num = 16
         self.batch_size = args.batch_size
@@ -140,14 +144,23 @@ class zXzGAN(object):
         if self.dataset == 'mnist':
             dset = datasets.MNIST('data/mnist', train=True, download=True,
                                     transform=transforms.Compose([transforms.ToTensor()]))
+            valid_dset = datasets.MNIST('data/mnist', train=False, download=True,
+                                    transform=transforms.Compose([transforms.ToTensor()]))
             self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
+            self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'fashion-mnist':
             dset = datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
+                [transforms.ToTensor()]))
+            valid_dset = datasets.FashionMNIST('data/fashion-mnist', train=False, download=True, transform=transforms.Compose(
                 [transforms.ToTensor()]))
             self.data_loader = DataLoader(
                 dset,
                 batch_size=self.batch_size, shuffle=True)
+            self.valid_loader = DataLoader(
+                valid_dset,
+                batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'celebA':
+            # TODO: add test data
             dset = utils.load_celebA('data/celebA', transform=transforms.Compose(
                 [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]))
             self.data_loader = DataLoader(dset, batch_size=self.batch_size,
@@ -229,7 +242,7 @@ class zXzGAN(object):
                 X_hat = self.G(z)
                 z_mu, z_sigma = self.E(X_hat)
                 # - loglikehood
-                E_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma, 1))
+                E_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189, 1))
                 self.train_hist['E_loss'].append(E_loss.data[0])
                 # Optimize
                 E_loss.backward()
@@ -242,11 +255,12 @@ class zXzGAN(object):
                 X_hat = self.G(z)
                 D_fake = self.D(X_hat)
                 z_mu, z_sigma = self.E(X_hat)
-                mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma, 1))
-                G_loss = self.BCE_loss(D_fake, self.y_real_) + mode_loss
+                mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189, 1))
+                G_loss = self.BCE_loss(D_fake, self.y_real_)
+                total_loss = G_loss + mode_loss
                 self.train_hist['G_loss'].append(G_loss.data[0])
                 # Optimize
-                G_loss.backward()
+                total_loss.backward()
                 self.G_optimizer.step()
                 self.__reset_grad()
 
@@ -255,18 +269,24 @@ class zXzGAN(object):
                     # Print and plot every epoch
                     print('Epoch-{}; D_loss: {:.4}; G_loss: {:.4}; E_loss: {:.4}\n'
                           .format(epoch, D_loss.data[0], G_loss.data[0], E_loss.data[0]))
-                    self.visualize_results(X, epoch+1)
+                    for iter, (X, _) in enumerate(self.valid_loader):
+                        X = utils.to_var(X)
+                        self.visualize_results(X, epoch+1)
+                        break
 
                     break
 
             self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
+
+            # Save model every 5 epochs
+            if epoch % 5 == 0:
+                self.save()
 
         self.train_hist['total_time'].append(time.time() - start_time)
         print("Avg one epoch time: %.2f, total %d epochs time: %.2f" % (np.mean(self.train_hist['per_epoch_time']),
               self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
 
-        self.save()
         # utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name,
                                  # self.epoch)
         # utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
@@ -275,8 +295,9 @@ class zXzGAN(object):
         self.G.eval()
         self.E.eval()
 
-        if not os.path.exists(self.result_dir + '/' + self.dataset + '/' + self.model_name):
-            os.makedirs(self.result_dir + '/' + self.dataset + '/' + self.model_name)
+        save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name)
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
 
         tot_num_samples = min(self.sample_num, self.batch_size)
         image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
@@ -310,18 +331,18 @@ class zXzGAN(object):
 
         # Save images
         utils.save_images(origins[:4 * 4, :, :, :], [4, 4],
-                      '/output/original' + '_epoch%03d' % epoch + '.png')
+                          os.path.join(save_dir, 'original' + '_epoch%03d' % epoch + '.png'))
         utils.save_images(samples[:4 * 4, :, :, :], [4, 4],
-                      '/output/random' + '_epoch%03d' % epoch + '.png')
+                          os.path.join(save_dir, 'random' + '_epoch%03d' % epoch + '.png'))
         utils.save_images(recons[:4 * 4, :, :, :], [4, 4],
-                      '/output/reconstructed' + '_epoch%03d' % epoch + '.png')
+                          os.path.join(save_dir, 'reconstructed' + '_epoch%03d' % epoch + '.png'))
         utils.save_images(recons_1[:4 * 4, :, :, :], [4, 4],
-                    '/output/reconstructed_1' + '_epoch%03d' % epoch + '.png')
+                          os.path.join(save_dir, 'reconstructed_1' + '_epoch%03d' % epoch + '.png'))
         utils.save_images(recons_2[:4 * 4, :, :, :], [4, 4],
-                    '/output/reconstructed_2' + '_epoch%03d' % epoch + '.png')
+                          os.path.join(save_dir, 'reconstructed_2' + '_epoch%03d' % epoch + '.png'))
 
     def save(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+        save_dir = os.path.join(self.root, self.save_dir, self.dataset, self.model_name)
 
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
@@ -334,7 +355,7 @@ class zXzGAN(object):
             pickle.dump(self.train_hist, f)
 
     def load(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+        save_dir = os.path.join(self.root, self.save_dir, self.dataset, self.model_name)
 
         self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
         self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
