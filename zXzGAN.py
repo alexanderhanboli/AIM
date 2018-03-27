@@ -148,6 +148,13 @@ class zXzGAN(object):
                                     transform=transforms.Compose([transforms.ToTensor()]))
             self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
             self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
+        elif self.dataset == 'cifar10':
+            dset = datasets.CIFAR10(root='data/mnist', train=True,
+                                        download=True, transform=transforms.Compose([transforms.Scale(64), transforms.ToTensor()]))
+            valid_dset = datasets.CIFAR10(root='data/mnist', train=False, download=True,
+                                    transform=transforms.Compose([transforms.Scale(64), transforms.ToTensor()]))
+            self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
+            self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'fashion-mnist':
             dset = datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
                 [transforms.ToTensor()]))
