@@ -1,5 +1,6 @@
 import argparse, os
 from zXzGAN import zXzGAN
+from LAI import LAI
 from gaussian_example import MixedGaussian
 
 """parsing and configuration"""
@@ -66,7 +67,7 @@ def main():
     if args.dataset == 'mixed-Gaussian':
         gan = MixedGaussian(args)
     else:
-        gan = zXzGAN(args)
+        gan = LAI(args)
 
     # launch the graph in a session
     gan.train()

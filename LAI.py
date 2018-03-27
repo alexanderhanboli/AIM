@@ -112,9 +112,9 @@ class Discriminator(nn.Module):
             nn.Linear(128 * (self.input_height // 4) * (self.input_width // 4), 1024),
             nn.BatchNorm1d(1024),
             nn.LeakyReLU(0.2),
-            nn.Linear(1024, 64),
+            nn.Linear(1024, 256),
             nn.LeakyReLU(0.2),
-            nn.Linear(64, self.output_dim),
+            nn.Linear(256, self.output_dim),
             nn.Sigmoid(),
         )
         utils.initialize_weights(self)
@@ -126,7 +126,7 @@ class Discriminator(nn.Module):
 
         return x
 
-class zXzGAN(object):
+class LAI(object):
     def __init__(self, args):
         # parameters
         self.root = args.root
@@ -138,7 +138,7 @@ class zXzGAN(object):
         self.dataset = args.dataset
         self.log_dir = args.log_dir
         self.z_dim = args.z_dim
-        self.model_name = "zXzGAN"
+        self.model_name = "LAI"
 
         # load dataset
         if self.dataset == 'mnist':
@@ -150,9 +150,9 @@ class zXzGAN(object):
             self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'cifar10':
             dset = datasets.CIFAR10(root='data/mnist', train=True,
-                                        download=True, transform=transforms.Compose([transforms.ToTensor()]))
+                                        download=True, transform=transforms.Compose([transforms.Scale(64), transforms.ToTensor()]))
             valid_dset = datasets.CIFAR10(root='data/mnist', train=False, download=True,
-                                    transform=transforms.Compose([transforms.ToTensor()]))
+                                    transform=transforms.Compose([transforms.Scale(64), transforms.ToTensor()]))
             self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
             self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'fashion-mnist':
@@ -177,6 +177,10 @@ class zXzGAN(object):
         self.height, self.width = dset.train_data.shape[1:3]
         if len(dset.train_data.shape) == 3:
             self.pix_level = 1
+        elif self.dataset == 'cifar10':
+            self.height = 2* self.height
+            self.width = 2 * self.width
+            self.pix_level = dset.train_data.shape[3]
         elif len(dset.train_data.shape) == 4:
             self.pix_level = dset.train_data.shape[3]
 
@@ -184,7 +188,7 @@ class zXzGAN(object):
         self.G = Generator(self.dataset, self.z_dim, self.height, self.width, self.pix_level)
         self.E = Encoder(self.dataset, self.z_dim, self.height, self.width, self.pix_level)
         self.D = Discriminator(self.dataset, self.height, self.width, self.pix_level)
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
+        self.G_optimizer = optim.Adam(chain(self.G.parameters(), self.E.parameters()), lr=args.lrG, betas=(args.beta1, args.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
         self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrE, betas=(args.beta1, args.beta2))
 
@@ -236,8 +240,8 @@ class zXzGAN(object):
                 X_hat = self.G(z)
                 D_real = self.D(X)
                 D_fake = self.D(X_hat)
-                D_loss = -torch.mean(utils.log(D_real) + utils.log(1 - D_fake))
-                # D_loss = self.BCE_loss(D_real, self.y_real_) + self.BCE_loss(D_fake, self.y_fake_)
+                # D_loss = -torch.mean(utils.log(D_real) + utils.log(1 - D_fake))
+                D_loss = self.BCE_loss(D_real, self.y_real_) + self.BCE_loss(D_fake, self.y_fake_)
                 self.train_hist['D_loss'].append(D_loss.data[0])
                 # Optimize
                 D_loss.backward()
@@ -245,11 +249,11 @@ class zXzGAN(object):
                 self.__reset_grad()
 
                 """Encoder"""
-                z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
+                #z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
                 X_hat = self.G(z)
                 z_mu, z_sigma = self.E(X_hat)
                 # - loglikehood
-                E_loss = 0.5 * torch.mean(torch.sum((z - z_mu) * (z - z_mu) * torch.exp(-z_sigma) + z_sigma + 1.837877, 1))
+                E_loss = torch.mean(torch.sum(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189, 1))
                 self.train_hist['E_loss'].append(E_loss.data[0])
                 # Optimize
                 E_loss.backward()
@@ -258,34 +262,29 @@ class zXzGAN(object):
 
                 """Generator"""
                 # Use both Discriminator and Encoder to update Generator
-                z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
+                #z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
                 X_hat = self.G(z)
                 D_fake = self.D(X_hat)
                 z_mu, z_sigma = self.E(X_hat)
-                mode_loss = 0.5 * torch.mean(torch.mean((z - z_mu) * (z - z_mu) * torch.exp(-z_sigma) + z_sigma + 1.837877, 1))
-                # G_loss = self.BCE_loss(D_fake, self.y_real_)
-                G_loss = -torch.mean(utils.log(D_fake))
+                mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189, 1))
+                G_loss = self.BCE_loss(D_fake, self.y_real_)
                 total_loss = G_loss + mode_loss
                 self.train_hist['G_loss'].append(G_loss.data[0])
                 # Optimize
                 total_loss.backward()
                 self.G_optimizer.step()
-                # self.E_optimizer.step()
                 self.__reset_grad()
 
                 """ Plot """
                 if (iter+1) == self.data_loader.dataset.__len__() // self.batch_size:
                     # Print and plot every epoch
                     print('Epoch-{}; D_loss: {:.4}; G_loss: {:.4}; E_loss: {:.4}\n'
-                          .format(epoch, np.mean(self.train_hist['D_loss']),
-                                         np.mean(self.train_hist['G_loss']),
-                                         np.mean(self.train_hist['E_loss'])))
-                    # for iter, (X, _) in enumerate(self.valid_loader):
-                    #     X = utils.to_var(X)
-                    #     self.visualize_results(X, epoch+1)
-                    #     break
+                          .format(epoch, D_loss.data[0], G_loss.data[0], E_loss.data[0]))
+                    for iter, (X, _) in enumerate(self.valid_loader):
+                        X = utils.to_var(X)
+                        self.visualize_results(X, epoch+1)
+                        break
 
-                    self.visualize_results(X, epoch+1)
                     break
 
             self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
@@ -299,9 +298,9 @@ class zXzGAN(object):
               self.epoch, self.train_hist['total_time'][0]))
         print("Training finish!... save training results")
 
-        utils.generate_animation(self.root + '/' + self.result_dir + '/' + self.dataset + '/' + self.model_name + '/reconstructed',
-                                 self.epoch)
-        utils.loss_plot(self.train_hist, os.path.join(self.root, self.save_dir, self.dataset, self.model_name), self.model_name)
+        # utils.generate_animation(self.result_dir + '/' + self.dataset + '/' + self.model_name + '/' + self.model_name,
+                                 # self.epoch)
+        # utils.loss_plot(self.train_hist, os.path.join(self.save_dir, self.dataset, self.model_name), self.model_name)
 
     def visualize_results(self, X, epoch):
         self.G.eval()
@@ -360,6 +359,7 @@ class zXzGAN(object):
             os.makedirs(save_dir)
 
         torch.save(self.G.state_dict(), os.path.join(save_dir, self.model_name + '_G.pkl'))
+        torch.save(self.E.state_dict(), os.path.join(save_dir, self.model_name + '_E.pkl'))
         torch.save(self.D.state_dict(), os.path.join(save_dir, self.model_name + '_D.pkl'))
 
         with open(os.path.join(save_dir, self.model_name + '_history.pkl'), 'wb') as f:
@@ -371,3 +371,4 @@ class zXzGAN(object):
 
         self.G.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_G.pkl')))
         self.D.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_D.pkl')))
+        self.E.load_state_dict(torch.load(os.path.join(save_dir, self.model_name + '_E.pkl')))
