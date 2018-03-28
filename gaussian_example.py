@@ -50,10 +50,10 @@ class Generator(nn.Module):
             nn.Linear(self.hid_dim, self.hid_dim, bias=False),
             nn.BatchNorm1d(self.hid_dim),
             nn.ReLU(),
-            nn.Linear(self.hid_dim, self.hid_dim, bias=False),
+            nn.Linear(self.hid_dim, self.hid_dim, bias=True),
             nn.BatchNorm1d(self.hid_dim),
             nn.ReLU(),
-            nn.Linear(self.hid_dim, self.hid_dim, bias=False),
+            nn.Linear(self.hid_dim, self.hid_dim, bias=True),
             nn.BatchNorm1d(self.hid_dim),
             nn.ReLU(),
             nn.Linear(self.hid_dim, self.output_dim, bias=True),
@@ -82,13 +82,13 @@ class Encoder(nn.Module):
             nn.ReLU(),
         )
         self.fc_mu = nn.Sequential(
-            nn.Linear(self.hid_dim, 16, bias=False),
+            nn.Linear(self.hid_dim, 16, bias=True),
             nn.BatchNorm1d(16),
             nn.ReLU(),
             nn.Linear(16, self.output_dim, bias=True),
         )
         self.fc_sigma = nn.Sequential(
-            nn.Linear(self.hid_dim, 16, bias=False),
+            nn.Linear(self.hid_dim, 16, bias=True),
             nn.BatchNorm1d(16),
             nn.ReLU(),
             nn.Linear(16, self.output_dim, bias=True),
@@ -115,17 +115,17 @@ class Discriminator(nn.Module):
         # This is a naive maxout implementation. Should be updated later.
         self.fc = nn.Sequential(
             nn.Linear(self.input_dim, self.hid_dim * self.maxout_pieces),
+            nn.BatchNorm1d(self.hid_dim * self.maxout_pieces),
         )
         self.fcmax1 = nn.Sequential(
-            nn.BatchNorm1d(self.hid_dim),
             nn.Linear(self.hid_dim, self.hid_dim * self.maxout_pieces),
+            nn.BatchNorm1d(self.hid_dim * self.maxout_pieces),
         )
         self.fcmax2 = nn.Sequential(
-            nn.BatchNorm1d(self.hid_dim),
             nn.Linear(self.hid_dim, self.hid_dim * self.maxout_pieces),
+            nn.BatchNorm1d(self.hid_dim * self.maxout_pieces),
         )
         self.fo = nn.Sequential(
-            nn.BatchNorm1d(self.hid_dim),
             nn.Linear(self.hid_dim, self.output_dim),
             nn.Sigmoid(),
         )

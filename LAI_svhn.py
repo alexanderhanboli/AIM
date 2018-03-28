@@ -23,19 +23,19 @@ class Generator(nn.Module):
         self.output_dim = 3
 
         self.deconv = nn.Sequential(
-            nn.ConvTranspose2d(self.input_dim, 128*8, 4, 1, 0),
+            nn.ConvTranspose2d(self.input_dim, 128*8, 4, 1, 0, bias=False),
             nn.BatchNorm2d(128*8),
             nn.ReLU(),
-            nn.ConvTranspose2d(128*8, 128*4, 4, 2, 1),
+            nn.ConvTranspose2d(128*8, 128*4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(128*4),
             nn.ReLU(),
-            nn.ConvTranspose2d(128*4, 128*2, 4, 2, 1),
+            nn.ConvTranspose2d(128*4, 128*2, 4, 2, 1, bias=False),
             nn.BatchNorm2d(128*2),
             nn.ReLU(),
-            nn.ConvTranspose2d(128*2, 128, 4, 2, 1),
+            nn.ConvTranspose2d(128*2, 128, 4, 2, 1, bias=False),
             nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.ConvTranspose2d(128, self.output_dim, 4, 2, 1),
+            nn.ConvTranspose2d(128, self.output_dim, 4, 2, 1, bias=False),
             nn.Tanh(),
         )
         utils.initialize_weights(self)
@@ -55,18 +55,18 @@ class Discriminator(nn.Module):
         self.output_dim = 1
 
         self.conv = nn.Sequential(
-            nn.Conv2d(self.input_dim, 128, 4, 2, 1),
+            nn.Conv2d(self.input_dim, 128, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(128, 128*2, 4, 2, 1),
+            nn.Conv2d(128, 128*2, 4, 2, 1, bias=False),
             nn.BatchNorm2d(128*2),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(128*2, 128*4, 4, 2, 1),
+            nn.Conv2d(128*2, 128*4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(128*4),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(128*4, 128*8, 4, 2, 1),
+            nn.Conv2d(128*4, 128*8, 4, 2, 1, bias=False),
             nn.BatchNorm2d(128*8),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(128*8, self.output_dim, 4, 1, 0),
+            nn.Conv2d(128*8, self.output_dim, 4, 1, 0, bias=False),
             nn.Sigmoid(),
         )
         utils.initialize_weights(self)
@@ -86,24 +86,24 @@ class Encoder(nn.Module):
         self.output_dim = z_dim
 
         self.conv = nn.Sequential(
-            nn.Conv2d(self.input_dim, 128, 4, 2, 1),
+            nn.Conv2d(self.input_dim, 128, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(128, 128*2, 4, 2, 1),
+            nn.Conv2d(128, 128*2, 4, 2, 1, bias=False),
             nn.BatchNorm2d(128*2),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(128*2, 128*4, 4, 2, 1),
+            nn.Conv2d(128*2, 128*4, 4, 2, 1, bias=False),
             nn.BatchNorm2d(128*4),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(128*4, 128*8, 4, 2, 1),
+            nn.Conv2d(128*4, 128*8, 4, 2, 1, bias=False),
             nn.BatchNorm2d(128*8),
             nn.LeakyReLU(0.2),
         )
         self.fc_mu = nn.Sequential(
-            nn.Conv2d(128*8, self.output_dim, 4, 1, 0),
+            nn.Conv2d(128*8, self.output_dim, 4, 1, 0, bias=False),
             nn.Sigmoid(),
         )
         self.fc_sigma = nn.Sequential(
-            nn.Conv2d(128*8, self.output_dim, 4, 1, 0),
+            nn.Conv2d(128*8, self.output_dim, 4, 1, 0, bias=False),
             nn.Sigmoid(),
         )
         utils.initialize_weights(self)
@@ -127,6 +127,7 @@ class LAI_svhn(object):
         self.z_dim = args.z_dim
         self.model_name = "LAI_svhn"
         self.load_model = args.load_model
+        self.dataset = 'svhn'
 
         # load SVHN dataset (73257, 3, 32, 32)
         dset = datasets.SVHN(root='data/svhn', split='train',
