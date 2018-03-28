@@ -50,10 +50,10 @@ class Generator(nn.Module):
             nn.Linear(self.hid_dim, self.hid_dim, bias=False),
             nn.BatchNorm1d(self.hid_dim),
             nn.ReLU(),
-            nn.Linear(self.hid_dim, self.hid_dim, bias=True),
+            nn.Linear(self.hid_dim, self.hid_dim, bias=False),
             nn.BatchNorm1d(self.hid_dim),
             nn.ReLU(),
-            nn.Linear(self.hid_dim, self.hid_dim, bias=True),
+            nn.Linear(self.hid_dim, self.hid_dim, bias=False),
             nn.BatchNorm1d(self.hid_dim),
             nn.ReLU(),
             nn.Linear(self.hid_dim, self.output_dim, bias=True),
@@ -76,22 +76,16 @@ class Encoder(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(self.input_dim, self.hid_dim, bias=False),
             nn.BatchNorm1d(self.hid_dim),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2),
             nn.Linear(self.hid_dim, self.hid_dim, bias=False),
             nn.BatchNorm1d(self.hid_dim),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2),
         )
         self.fc_mu = nn.Sequential(
-            nn.Linear(self.hid_dim, 16, bias=True),
-            nn.BatchNorm1d(16),
-            nn.ReLU(),
-            nn.Linear(16, self.output_dim, bias=True),
+            nn.Linear(self.hid_dim, self.output_dim, bias=True),
         )
         self.fc_sigma = nn.Sequential(
-            nn.Linear(self.hid_dim, 16, bias=True),
-            nn.BatchNorm1d(16),
-            nn.ReLU(),
-            nn.Linear(16, self.output_dim, bias=True),
+            nn.Linear(self.hid_dim, self.output_dim, bias=True),
         )
         utils.initialize_weights(self)
 
@@ -246,16 +240,35 @@ class MixedGaussian(object):
 
                 """Generator"""
                 # Use both Discriminator and Encoder to update Generator
+                # z = utils.generate_z(self.batch_size, self.z_dim, self.prior)
+                # X_hat = self.G(z)
+                # D_fake = self.D(X_hat)
+                # z_mu, z_sigma = self.E(X_hat)
+                # Mode_loss = torch.mean(torch.sum(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
+                # G_loss = self.BCE_loss(D_fake, self.y_real_)
+                # total_loss = G_loss + 1.0 * Mode_loss
+                # self.train_hist['G_loss'].append(G_loss.data[0])
+                # # Optimize
+                # total_loss.backward()
+                # self.G_optimizer.step()
+                # self.__reset_grad()
+
+                # Mode loss train
+                z = utils.generate_z(self.batch_size, self.z_dim, self.prior)
+                X_hat = self.G(z)
+                z_mu, z_sigma = self.E(X_hat)
+                Mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
+                Mode_loss.backward()
+                self.G_optimizer.step()
+                self.__reset_grad()
+
+                # D loss train
                 z = utils.generate_z(self.batch_size, self.z_dim, self.prior)
                 X_hat = self.G(z)
                 D_fake = self.D(X_hat)
-                z_mu, z_sigma = self.E(X_hat)
-                mode_loss = torch.mean(torch.sum(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
                 G_loss = self.BCE_loss(D_fake, self.y_real_)
-                total_loss = G_loss + mode_loss
                 self.train_hist['G_loss'].append(G_loss.data[0])
-                # Optimize
-                total_loss.backward()
+                G_loss.backward()
                 self.G_optimizer.step()
                 self.__reset_grad()
 
@@ -296,6 +309,8 @@ class MixedGaussian(object):
         color_vec = []
 
         for iter, (X, label) in enumerate(self.valid_loader):
+            if (iter+1) == 26:
+                break
             z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
             X = utils.to_var(X)
             label = utils.to_var(label)

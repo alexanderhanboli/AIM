@@ -39,7 +39,7 @@ class Generator(nn.Module):
             nn.ConvTranspose2d(64, self.output_dim, 4, 2, 1),
             nn.Sigmoid(),
         )
-        # utils.initialize_weights(self)
+        utils.initialize_weights(self)
 
     def forward(self, z):
         x = self.fc(z)
@@ -83,7 +83,7 @@ class Encoder(nn.Module):
             nn.LeakyReLU(0.2),
             nn.Linear(128, self.output_dim),
         )
-        # utils.initialize_weights(self)
+        utils.initialize_weights(self)
 
     def forward(self, input):
         x = self.conv(input)
@@ -119,7 +119,7 @@ class Discriminator(nn.Module):
             nn.Linear(1024, self.output_dim),
             nn.Sigmoid(),
         )
-        # utils.initialize_weights(self)
+        utils.initialize_weights(self)
 
     def forward(self, input):
         x = self.conv(input)
@@ -250,6 +250,15 @@ class LAI(object):
             self.G.train()
             self.E.train()
             epoch_start_time = time.time()
+
+            # learning rate decay
+            if (epoch+1) % 10 == 0:
+                G_optimizer.param_groups[0]['lr'] /= 2
+                D_optimizer.param_groups[0]['lr'] /= 2
+                E_optimizer.param_groups[0]['lr'] /= 2
+                print("learning rate change!")
+
+
             for iter, (X, _) in enumerate(self.data_loader):
                 X = utils.to_var(X)
 
@@ -271,8 +280,6 @@ class LAI(object):
                 z_mu, z_sigma = self.E(X_hat)
                 # - loglikehood
                 E_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
-                # E_prob = torch.exp(-0.5 * torch.sum((z - z_mu) ** 2 * torch.exp(-z_sigma) + z_sigma + np.log(2*np.pi), 1, keepdim=True))
-                # E_loss = self.BCE_loss(E_prob, self.y_real_)
                 self.train_hist['E_loss'].append(E_loss.data[0])
                 # Optimize
                 self.__reset_grad()
@@ -286,8 +293,6 @@ class LAI(object):
                 D_fake = self.D(X_hat)
                 z_mu, z_sigma = self.E(X_hat)
                 mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
-                # mode_prob = torch.exp(-0.5 * torch.sum((z - z_mu) ** 2 * torch.exp(-z_sigma) + z_sigma + np.log(2*np.pi), 1, keepdim=True))
-                # mode_loss = self.BCE_loss(mode_prob, self.y_real_)
                 G_loss = self.BCE_loss(D_fake, self.y_real_)
                 total_loss = G_loss + mode_loss
                 self.train_hist['G_loss'].append(G_loss.data[0])
@@ -295,6 +300,24 @@ class LAI(object):
                 self.__reset_grad()
                 total_loss.backward()
                 self.G_optimizer.step()
+
+                # Option 2
+                # z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
+                # X_hat = self.G(z)
+                # z_mu, z_sigma = self.E(X_hat)
+                # mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
+                # self.__reset_grad()
+                # mode_loss.backward()
+                # self.G_optimizer.step()
+                #
+                # z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
+                # X_hat = self.G(z)
+                # D_fake = self.D(X_hat)
+                # G_loss = self.BCE_loss(D_fake, self.y_real_)
+                # self.train_hist['G_loss'].append(G_loss.data[0])
+                # self.__reset_grad()
+                # G_loss.backward()
+                # self.G_optimizer.step()
 
                 """ Plot """
                 if (iter+1) == self.data_loader.dataset.__len__() // self.batch_size:
