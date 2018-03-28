@@ -131,23 +131,20 @@ def loss_plot(hist, path = 'Train_hist.png', model_name = ''):
 
 def initialize_weights(net):
     for m in net.modules():
-        if isinstance(m, nn.Conv2d):
-            m.weight.data.normal_(0, 0.02)
-            m.bias.data.zero_()
-        elif isinstance(m, nn.ConvTranspose2d):
-            m.weight.data.normal_(0, 0.02)
-            m.bias.data.zero_()
-        elif isinstance(m, nn.Linear):
-            m.weight.data.normal_(0, 0.02)
-            m.bias.data.zero_()
+        classname = m.__class__.__name__
+        if classname.find('Conv') != -1:
+            m.weight.data.normal_(0.0, 0.02)
+        elif classname.find('BatchNorm') != -1:
+            m.weight.data.normal_(1.0, 0.02)
+            m.bias.data.fill_(0)
 
 def log(x):
     return torch.log(x + 1e-10)
 
-def to_var(x):
+def to_var(x, volatile=False):
     if torch.cuda.is_available():
         x = x.cuda()
-    return Variable(x)
+    return Variable(x, volatile=volatile)
 
 def to_np(x):
     if torch.cuda.is_available():

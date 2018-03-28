@@ -16,119 +16,105 @@ from itertools import *
 class Generator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : FC1024_BR-FC7x7x128_BR-(64)4dc2s_BR-(1)4dc2s_S
-    def __init__(self, dataset = 'mnist', z_dim = 64, height = None, width = None, pix_level = None):
+    def __init__(self, z_dim = 100):
         super(Generator, self).__init__()
 
-        self.input_height = height
-        self.input_width = width
         self.input_dim = z_dim
-        self.output_dim = pix_level
+        self.output_dim = 3
 
-        self.fc = nn.Sequential(
-            nn.Linear(self.input_dim, 1024),
-            nn.BatchNorm1d(1024),
-            nn.LeakyReLU(0.2),
-            nn.Linear(1024, 128 * (self.input_height // 4) * (self.input_width // 4)),
-            nn.BatchNorm1d(128 * (self.input_height // 4) * (self.input_width // 4)),
-            nn.LeakyReLU(0.2),
-        )
         self.deconv = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, 4, 2, 1),
-            nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.2),
-            nn.ConvTranspose2d(64, self.output_dim, 4, 2, 1),
-            nn.Sigmoid(),
+            nn.ConvTranspose2d(self.input_dim, 128*8, 4, 1, 0),
+            nn.BatchNorm2d(128*8),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128*8, 128*4, 4, 2, 1),
+            nn.BatchNorm2d(128*4),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128*4, 128*2, 4, 2, 1),
+            nn.BatchNorm2d(128*2),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128*2, 128, 4, 2, 1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, self.output_dim, 4, 2, 1),
+            nn.Tanh(),
         )
-        # utils.initialize_weights(self)
+        utils.initialize_weights(self)
 
     def forward(self, z):
-        x = self.fc(z)
-        x = x.view(-1, 128, (self.input_height // 4), (self.input_width // 4))
-        x = self.deconv(x)
+        x = self.deconv(z)
+        return x
+
+"""Discriminator"""
+class Discriminator(nn.Module):
+    # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
+    # Architecture : (64)4c2s-(128)4c2s_BL-FC1024_BL-FC1_S
+    def __init__(self):
+        super(Discriminator, self).__init__()
+
+        self.input_dim = 3
+        self.output_dim = 1
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(self.input_dim, 128, 4, 2, 1),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(128, 128*2, 4, 2, 1),
+            nn.BatchNorm2d(128*2),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(128*2, 128*4, 4, 2, 1),
+            nn.BatchNorm2d(128*4),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(128*4, 128*8, 4, 2, 1),
+            nn.BatchNorm2d(128*8),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(128*8, self.output_dim, 4, 1, 0),
+            nn.Sigmoid(),
+        )
+        utils.initialize_weights(self)
+
+    def forward(self, input):
+        x = self.conv(input)
         return x
 
 """Encoder"""
 class Encoder(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : (64)4c2s-(128)4c2s_BL-FC1024_BL-FC1_S
-    def __init__(self, dataset = 'mnist', z_dim = 64, height = None, width = None, pix_level = None):
+    def __init__(self, z_dim = 100):
         super(Encoder, self).__init__()
 
-        self.input_height = height
-        self.input_width = width
-        self.input_dim = pix_level
+        self.input_dim = 3
         self.output_dim = z_dim
 
         self.conv = nn.Sequential(
-            nn.Conv2d(self.input_dim, 64, 4, 2, 1),
+            nn.Conv2d(self.input_dim, 128, 4, 2, 1),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(64, 128, 4, 2, 1),
-            nn.BatchNorm2d(128),
+            nn.Conv2d(128, 128*2, 4, 2, 1),
+            nn.BatchNorm2d(128*2),
             nn.LeakyReLU(0.2),
-        )
-        self.fc = nn.Sequential(
-            nn.Linear(128 * (self.input_height // 4) * (self.input_width // 4), 1024),
-            nn.BatchNorm1d(1024),
+            nn.Conv2d(128*2, 128*4, 4, 2, 1),
+            nn.BatchNorm2d(128*4),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(128*4, 128*8, 4, 2, 1),
+            nn.BatchNorm2d(128*8),
             nn.LeakyReLU(0.2),
         )
         self.fc_mu = nn.Sequential(
-            nn.Linear(1024, 128),
-            nn.BatchNorm1d(128),
-            nn.LeakyReLU(0.2),
-            nn.Linear(128, self.output_dim),
+            nn.Conv2d(128*8, self.output_dim, 4, 1, 0),
+            nn.Sigmoid(),
         )
         self.fc_sigma = nn.Sequential(
-            nn.Linear(1024, 128),
-            nn.BatchNorm1d(128),
-            nn.LeakyReLU(0.2),
-            nn.Linear(128, self.output_dim),
+            nn.Conv2d(128*8, self.output_dim, 4, 1, 0),
+            nn.Sigmoid(),
         )
-        # utils.initialize_weights(self)
+        utils.initialize_weights(self)
 
     def forward(self, input):
         x = self.conv(input)
-        x = x.view(-1, 128 * (self.input_height // 4) * (self.input_width // 4))
-        x = self.fc(x)
         mu = self.fc_mu(x)
         sigma = self.fc_sigma(x)
         return mu, sigma
 
-"""Discriminator"""
-class Discriminator(nn.Module):
-    # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
-    # Architecture : (64)4c2s-(128)4c2s_BL-FC1024_BL-FC1_S
-    def __init__(self, dataset = 'mnist', height = None, width = None, pix_level = None):
-        super(Discriminator, self).__init__()
-
-        self.input_height = height
-        self.input_width = width
-        self.input_dim = pix_level
-        self.output_dim = 1
-
-        self.conv = nn.Sequential(
-            nn.Conv2d(self.input_dim, 64, 4, 2, 1),
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(64, 128, 4, 2, 1),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2),
-        )
-        self.fc = nn.Sequential(
-            nn.Linear(128 * (self.input_height // 4) * (self.input_width // 4), 1024),
-            nn.BatchNorm1d(1024),
-            nn.LeakyReLU(0.2),
-            nn.Linear(1024, self.output_dim),
-            nn.Sigmoid(),
-        )
-        # utils.initialize_weights(self)
-
-    def forward(self, input):
-        x = self.conv(input)
-        x = x.view(-1, 128 * (self.input_height // 4) * (self.input_width // 4))
-        x = self.fc(x)
-
-        return x
-
-class LAI(object):
+class LAI_svhn(object):
     def __init__(self, args):
         # parameters
         self.root = args.root
@@ -137,71 +123,24 @@ class LAI(object):
         self.batch_size = args.batch_size
         self.save_dir = args.save_dir
         self.result_dir = args.result_dir
-        self.dataset = args.dataset
         self.log_dir = args.log_dir
         self.z_dim = args.z_dim
-        self.model_name = "LAI"
+        self.model_name = "LAI_svhn"
         self.load_model = args.load_model
 
-        # load dataset
-        if self.dataset == 'mnist':
-            dset = datasets.MNIST('data/mnist', train=True, download=True,
-                                    transform=transforms.Compose([transforms.ToTensor()]))
-            valid_dset = datasets.MNIST('data/mnist', train=False, download=True,
-                                    transform=transforms.Compose([transforms.ToTensor()]))
-            self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
-            self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
-        elif self.dataset == 'cifar10':
-            dset = datasets.CIFAR10(root='data/mnist', train=True,
-                                        download=True, transform=transforms.Compose([transforms.ToTensor()]))
-            valid_dset = datasets.CIFAR10(root='data/mnist', train=False, download=True,
-                                    transform=transforms.Compose([transforms.ToTensor()]))
-            self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
-            self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
-        elif self.dataset == 'svhn':
-            dset = datasets.SVHN(root='data/svhn', split='train',
-                                        download=True, transform=transforms.Compose([transforms.ToTensor()]))
-            valid_dset = datasets.SVHN(root='data/svhn', split='test', download=True,
-                                    transform=transforms.Compose([transforms.ToTensor()]))
-            self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
-            self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
-        elif self.dataset == 'fashion-mnist':
-            dset = datasets.FashionMNIST('data/fashion-mnist', train=True, download=True, transform=transforms.Compose(
-                [transforms.ToTensor()]))
-            valid_dset = datasets.FashionMNIST('data/fashion-mnist', train=False, download=True, transform=transforms.Compose(
-                [transforms.ToTensor()]))
-            self.data_loader = DataLoader(
-                dset,
-                batch_size=self.batch_size, shuffle=True)
-            self.valid_loader = DataLoader(
-                valid_dset,
-                batch_size=self.batch_size, shuffle=True)
-        elif self.dataset == 'celebA':
-            # TODO: add test data
-            dset = utils.load_celebA('data/celebA', transform=transforms.Compose(
-                [transforms.CenterCrop(160), transforms.Scale(64), transforms.ToTensor()]))
-            self.data_loader = DataLoader(dset, batch_size=self.batch_size,
-                                                 shuffle=True)
-
-        # image dimensions
-        if self.dataset == 'svhn':
-            self.height, self.width = dset.data.shape[2:4]
-            self.pix_level = dset.data.shape[1]
-        else:
-            self.height, self.width = dset.train_data.shape[1:3]
-            if len(dset.train_data.shape) == 3:
-                self.pix_level = 1
-            # elif self.dataset == 'cifar10':
-            #     self.height = 2* self.height
-            #     self.width = 2 * self.width
-            #     self.pix_level = dset.train_data.shape[3]
-            elif len(dset.train_data.shape) == 4:
-                self.pix_level = dset.train_data.shape[3]
+        # load SVHN dataset (73257, 3, 32, 32)
+        dset = datasets.SVHN(root='data/svhn', split='train',
+                                    download=True, transform=transforms.Compose([transforms.Scale(64), transforms.ToTensor(),
+                                                                                 transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))]))
+        valid_dset = datasets.SVHN(root='data/svhn', split='test', download=True,
+                                transform=transforms.Compose([transforms.Scale(64), transforms.ToTensor(), transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))]))
+        self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
+        self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
 
         # networks init
-        self.G = Generator(self.dataset, self.z_dim, self.height, self.width, self.pix_level)
-        self.E = Encoder(self.dataset, self.z_dim, self.height, self.width, self.pix_level)
-        self.D = Discriminator(self.dataset, self.height, self.width, self.pix_level)
+        self.G = Generator(self.z_dim)
+        self.E = Encoder(self.z_dim)
+        self.D = Discriminator()
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=args.lrD, betas=(args.beta1, args.beta2))
         self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrE, betas=(args.beta1, args.beta2))
@@ -254,11 +193,10 @@ class LAI(object):
                 X = utils.to_var(X)
 
                 """Discriminator"""
-                z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
+                z = utils.to_var(torch.randn((self.batch_size, self.z_dim)).view(-1, self.z_dim, 1, 1))
                 X_hat = self.G(z)
-                D_real = self.D(X)
-                D_fake = self.D(X_hat)
-                # D_loss = -torch.mean(utils.log(D_real) + utils.log(1 - D_fake))
+                D_real = self.D(X).squeeze().view(-1,1)
+                D_fake = self.D(X_hat).squeeze().view(-1,1)
                 D_loss = self.BCE_loss(D_real, self.y_real_) + self.BCE_loss(D_fake, self.y_fake_)
                 self.train_hist['D_loss'].append(D_loss.data[0])
                 # Optimize
@@ -267,12 +205,12 @@ class LAI(object):
                 self.D_optimizer.step()
 
                 """Encoder"""
+                z = utils.to_var(torch.randn((self.batch_size, self.z_dim)).view(-1, self.z_dim, 1, 1))
                 X_hat = self.G(z)
                 z_mu, z_sigma = self.E(X_hat)
+                z_mu, z_sigma = z_mu.squeeze(), z_sigma.squeeze()
                 # - loglikehood
                 E_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
-                # E_prob = torch.exp(-0.5 * torch.sum((z - z_mu) ** 2 * torch.exp(-z_sigma) + z_sigma + np.log(2*np.pi), 1, keepdim=True))
-                # E_loss = self.BCE_loss(E_prob, self.y_real_)
                 self.train_hist['E_loss'].append(E_loss.data[0])
                 # Optimize
                 self.__reset_grad()
@@ -281,13 +219,12 @@ class LAI(object):
 
                 """Generator"""
                 # Use both Discriminator and Encoder to update Generator
-                z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
+                z = utils.to_var(torch.randn((self.batch_size, self.z_dim)).view(-1, self.z_dim, 1, 1))
                 X_hat = self.G(z)
-                D_fake = self.D(X_hat)
+                D_fake = self.D(X_hat).squeeze().view(-1,1)
                 z_mu, z_sigma = self.E(X_hat)
+                z_mu, z_sigma = z_mu.squeeze(), z_sigma.squeeze()
                 mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
-                # mode_prob = torch.exp(-0.5 * torch.sum((z - z_mu) ** 2 * torch.exp(-z_sigma) + z_sigma + np.log(2*np.pi), 1, keepdim=True))
-                # mode_loss = self.BCE_loss(mode_prob, self.y_real_)
                 G_loss = self.BCE_loss(D_fake, self.y_real_)
                 total_loss = G_loss + mode_loss
                 self.train_hist['G_loss'].append(G_loss.data[0])
@@ -337,13 +274,13 @@ class LAI(object):
         image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
 
         # Reconstruction and generation
-        z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
-        mu, sigma = self.E(X)
+        z = utils.to_var(torch.randn((self.batch_size, self.z_dim)).view(-1, self.z_dim, 1, 1))
+        mu, sigma = self.E(X) # do not squeeze
         X_hat = self.G(z) # randomly generated sample
         X_rec = self.G(mu) # reconstructed
-        eps = utils.to_var(torch.randn(self.batch_size, self.z_dim))
+        eps = utils.to_var(torch.randn((self.batch_size, self.z_dim)).view(-1, self.z_dim, 1, 1))
         X_rec1 = self.G(mu + eps * torch.exp(sigma/2.0))
-        eps = utils.to_var(torch.randn(self.batch_size, self.z_dim))
+        eps = utils.to_var(torch.randn((self.batch_size, self.z_dim)).view(-1, self.z_dim, 1, 1))
         X_rec2 = self.G(mu + eps * torch.exp(sigma/2.0))
 
         if torch.cuda.is_available():

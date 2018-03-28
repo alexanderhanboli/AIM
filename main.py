@@ -1,5 +1,6 @@
 import argparse, os
 from LAI import LAI
+from LAI_svhn import LAI_svhn
 from gaussian_example import MixedGaussian
 
 """parsing and configuration"""
@@ -11,16 +12,16 @@ def parse_args():
     parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'svhn', 'cifar10', 'celebA', 'mixed-Gaussian'],
                         help='The name of dataset')
     parser.add_argument('--epoch', type=int, default=25, help='The number of epochs to run')
-    parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
+    parser.add_argument('--batch_size', type=int, default=128, help='The size of batch')
     parser.add_argument('--save_dir', type=str, default='models',
                         help='Directory name to save the model')
     parser.add_argument('--result_dir', type=str, default='results',
                         help='Directory name to save the generated images')
     parser.add_argument('--log_dir', type=str, default='logs',
                         help='Directory name to save training logs')
-    parser.add_argument('--lrG', type=float, default=2e-4)
-    parser.add_argument('--lrD', type=float, default=2e-4)
-    parser.add_argument('--lrE', type=float, default=2e-4)
+    parser.add_argument('--lrG', type=float, default=1e-4)
+    parser.add_argument('--lrD', type=float, default=1e-4)
+    parser.add_argument('--lrE', type=float, default=1e-4)
     parser.add_argument('--beta1', type=float, default=0.5)
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--z_dim', type=int, default=64)
@@ -66,6 +67,8 @@ def main():
 
     if args.dataset == 'mixed-Gaussian':
         gan = MixedGaussian(args)
+    elif args.dataset == 'svhn':
+        gan = LAI_svhn(args)
     else:
         gan = LAI(args)
 
