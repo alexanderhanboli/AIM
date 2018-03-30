@@ -339,16 +339,16 @@ class dcLAI(object):
         X_rec2 = self.G(mu + eps * torch.exp(sigma/2.0))
 
         if torch.cuda.is_available():
-            print('Mu is {};\n Sigma is {}\n'
-                  .format(mu.cpu().data.numpy()[0,:], sigma.cpu().data.numpy()[0,:]))
+            # print('Mu is {};\n Sigma is {}\n'
+            #       .format(mu.cpu().data.numpy()[0,:], sigma.cpu().data.numpy()[0,:]))
             samples = X_hat.cpu().data.numpy().transpose(0, 2, 3, 1) # 1
             origins = X.cpu().data.numpy().transpose(0, 2, 3, 1) # 2
             recons = X_rec.cpu().data.numpy().transpose(0, 2, 3, 1)  # 3
             recons_1 = X_rec1.cpu().data.numpy().transpose(0, 2, 3, 1) # 3
             recons_2 = X_rec2.cpu().data.numpy().transpose(0, 2, 3, 1)  # 3
         else:
-            print('Mu is {};\n Sigma is {}\n'
-                  .format(mu.data.numpy()[0,:], sigma.data.numpy()[0,:]))
+            # print('Mu is {};\n Sigma is {}\n'
+            #       .format(mu.data.numpy()[0,:], sigma.data.numpy()[0,:]))
             samples = X_hat.data.numpy().transpose(0, 2, 3, 1)
             origins = X.data.numpy().transpose(0, 2, 3, 1) # 2
             recons = X_rec.data.numpy().transpose(0, 2, 3, 1)  # 3
