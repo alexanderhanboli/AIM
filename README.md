@@ -12,3 +12,8 @@ python main.py --dataset 'mnist' --root 'your/root/directory' --epoch 100 --batc
 ```bash
 python main.py --dataset 'mixed-Gaussian' --root 'your/root/directory' --epoch 200 --batch_size 100 --beta1 0.8
 ```
+
+3. dcGAN structure LAI
+```bash
+python main.py --model_name 'dcLAI' --dataset 'svhn' --root 'your/root/directory' --epoch 20 --batch_size 128 --beta1 0.5 --z_dim 100
+```
