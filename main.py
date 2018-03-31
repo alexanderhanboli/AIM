@@ -1,5 +1,6 @@
 import argparse, os
 from LAI import LAI
+from LAI_cl import LAI_cl
 from GLAI import GLAI
 from dcLAI import dcLAI
 from LAI_mix_gaussian_cl import LAI_mg_cl
@@ -71,13 +72,13 @@ def main():
         exit()
 
     if args.dataset == 'mixed-Gaussian':
-        gan = LAI_mg(args)
+        gan = LAI_mg_cl(args)
     elif args.model_name == 'dcLAI':
         gan = dcLAI(args)
     elif args.model_name == 'GLAI':
         gan = GLAI(args)
     else:
-        gan = LAI(args)
+        gan = LAI_cl(args)
 
     # launch the graph in a session
     gan.train()
