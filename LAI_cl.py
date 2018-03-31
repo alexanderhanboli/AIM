@@ -259,7 +259,7 @@ class LAI_cl(object):
             D_err = []
             G_err = []
             # learning rate decay
-            if (epoch+1) % 10 == 0:
+            if (epoch+1) % 20 == 0:
                 self.G_optimizer.param_groups[0]['lr'] /= 2
                 self.D_optimizer.param_groups[0]['lr'] /= 2
                 self.E_optimizer.param_groups[0]['lr'] /= 2
@@ -282,18 +282,18 @@ class LAI_cl(object):
                 self.D_optimizer.step()
                 self.__reset_grad()
 
-                """Encoder"""
-                z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
-                X_hat = self.G(z)
-                z_mu, z_sigma = self.E(self.F(X_hat))
-                # - loglikehood
-                E_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
-                self.train_hist['E_loss'].append(E_loss.data[0])
-                E_err.append(E_loss.data[0])
-                # Optimize
-                E_loss.backward()
-                self.E_optimizer.step()
-                self.__reset_grad()
+                # """Encoder"""
+                # z = utils.to_var(torch.randn(self.batch_size, self.z_dim))
+                # X_hat = self.G(z)
+                # z_mu, z_sigma = self.E(self.F(X_hat))
+                # # - loglikehood
+                # E_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
+                # self.train_hist['E_loss'].append(E_loss.data[0])
+                # E_err.append(E_loss.data[0])
+                # # Optimize
+                # E_loss.backward()
+                # self.E_optimizer.step()
+                # self.__reset_grad()
 
                 """Generator"""
                 # Use both Discriminator and Encoder to update Generator
@@ -301,14 +301,16 @@ class LAI_cl(object):
                 X_hat = self.G(z)
                 D_fake = self.D(self.F(X_hat))
                 z_mu, z_sigma = self.E(self.F(X_hat))
-                mode_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
+                E_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
                 G_loss = self.BCE_loss(D_fake, self.y_real_)
-                total_loss = G_loss + mode_loss
+                total_loss = G_loss + E_loss
                 self.train_hist['G_loss'].append(G_loss.data[0])
                 G_err.append(G_loss.data[0])
+                E_err.append(E_loss.data[0])
                 # Optimize
                 total_loss.backward()
                 self.G_optimizer.step()
+                self.E_optimizer.step()
                 self.__reset_grad()
 
                 """ Plot """

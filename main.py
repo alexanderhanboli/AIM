@@ -25,9 +25,9 @@ def parse_args():
     parser.add_argument('--log_dir', type=str, default='logs',
                         help='Directory name to save training logs')
 
-    parser.add_argument('--lrG', type=float, default=2e-4)
-    parser.add_argument('--lrD', type=float, default=2e-4)
-    parser.add_argument('--lrE', type=float, default=2e-4)
+    parser.add_argument('--lrG', type=float, default=1e-4)
+    parser.add_argument('--lrD', type=float, default=1e-4)
+    parser.add_argument('--lrE', type=float, default=1e-4)
     parser.add_argument('--beta1', type=float, default=0.5)
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--z_dim', type=int, default=64)
