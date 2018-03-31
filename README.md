@@ -1,4 +1,4 @@
-# loglikelihood_gan
+# LAI: Latent-likelihood Adversarial Inference
 
 ![](https://img.shields.io/badge/python-3.5.2-brightgreen.svg)
 
