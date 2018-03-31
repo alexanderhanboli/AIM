@@ -348,22 +348,22 @@ class LAI_mg_cl(object):
         cmap = cmap.from_list('Custom cmap', cmaplist, cmap.N)
 
         fig, ax = plt.subplots(1, 1, figsize=(6, 6))
-        ax.scatter(Original[:,0], Original[:,1], c=color_vec, cmap=cmap)
+        ax.scatter(Original[:,0], Original[:,1], c=color_vec, cmap=cmap, alpha=0.3)
         fig.savefig(os.path.join(save_dir, 'X_original' + '_epoch%03d' % epoch + '.png'))
         plt.close()
 
         fig, ax = plt.subplots(1, 1, figsize=(6, 6))
-        ax.scatter(Recon[:10000,0], Recon[:10000,1], c=color_vec, cmap=cmap)
+        ax.scatter(Recon[:10000,0], Recon[:10000,1], c=color_vec[:10000], cmap=cmap, alpha=0.3)
         fig.savefig(os.path.join(save_dir, 'X_reconstruc' + '_epoch%03d' % epoch + '.png'))
         plt.close()
 
         fig, ax = plt.subplots(1, 1, figsize=(6, 6))
-        ax.scatter(Random[:10000,0], Random[:10000,1])
+        ax.scatter(Random[:10000,0], Random[:10000,1], alpha=0.3)
         fig.savefig(os.path.join(save_dir, 'X_random' + '_epoch%03d' % epoch + '.png'))
         plt.close()
 
         fig, ax = plt.subplots(1, 1, figsize=(6, 6))
-        ax.scatter(Z[:,0], Z[:,1], c=color_vec, cmap=cmap)
+        ax.scatter(Z[:,0], Z[:,1], c=color_vec, cmap=cmap, alpha=0.3)
         fig.savefig(os.path.join(save_dir, 'Z_mu' + '_epoch%03d' % epoch + '.png'))
         plt.close()
 
