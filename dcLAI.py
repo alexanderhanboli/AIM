@@ -142,10 +142,10 @@ class dcLAI(object):
             self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
             self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'cifar10':
-            dset = datasets.CIFAR10(root='data/mnist', train=True,
-                                        download=True, transform=transforms.Compose([transforms.ToTensor()]))
-            valid_dset = datasets.CIFAR10(root='data/mnist', train=False, download=True,
-                                    transform=transforms.Compose([transforms.ToTensor()]))
+            dset = datasets.CIFAR10(root='data/cifar10', train=True,
+                                        download=True, transform=transforms.Compose([transforms.Scale(64), transforms.ToTensor(), transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))]))
+            valid_dset = datasets.CIFAR10(root='data/cifar10', train=False, download=True,
+                                    transform=transforms.Compose([transforms.Scale(64), transforms.ToTensor(), transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))]))
             self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
             self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'svhn':
@@ -184,10 +184,10 @@ class dcLAI(object):
             self.height, self.width = dset.train_data.shape[1:3]
             if len(dset.train_data.shape) == 3:
                 self.pix_level = 1
-            # elif self.dataset == 'cifar10':
-            #     self.height = 2* self.height
-            #     self.width = 2 * self.width
-            #     self.pix_level = dset.train_data.shape[3]
+            elif self.dataset == 'cifar10':
+                self.height = 64
+                self.width = 64
+                self.pix_level = dset.train_data.shape[3]
             elif len(dset.train_data.shape) == 4:
                 self.pix_level = dset.train_data.shape[3]
 
