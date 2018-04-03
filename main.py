@@ -1,7 +1,6 @@
 import argparse, os
 from LAI import LAI
 from LAI_cl import LAI_cl
-from GLAI import GLAI
 from dcLAI import dcLAI
 from LAI_mix_gaussian_cl import LAI_mg_cl
 from LAI_mix_gaussian import LAI_mg
@@ -13,7 +12,7 @@ def parse_args():
 
     parser.add_argument('--root', type=str, default='/output', help='Root of the project')
     parser.add_argument('--model_name', type=str, default='LAI', help='Model name')
-    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'svhn', 'cifar10', 'celebA', 'mixed-Gaussian'],
+    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'emnist', 'fashion-mnist', 'svhn', 'cifar10', 'celebA', 'mixed-Gaussian'],
                         help='The name of dataset')
     parser.add_argument('--epoch', type=int, default=25, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=128, help='The size of batch')
@@ -75,8 +74,6 @@ def main():
         gan = LAI_mg_cl(args)
     elif args.model_name == 'dcLAI':
         gan = dcLAI(args)
-    elif args.model_name == 'GLAI':
-        gan = GLAI(args)
     else:
         gan = LAI_cl(args)
 

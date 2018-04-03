@@ -239,11 +239,10 @@ class LAI_mg_cl(object):
             G_err = []
 
             # learning rate decay
-            if (epoch+1) % 20 == 0:
-                self.G_optimizer.param_groups[0]['lr'] /= 2
-                self.D_optimizer.param_groups[0]['lr'] /= 2
-                self.E_optimizer.param_groups[0]['lr'] /= 2
-                print("learning rate change!")
+            self.G_optimizer.param_groups[0]['lr'] /= np.sqrt(epoch+1)
+            self.D_optimizer.param_groups[0]['lr'] /= np.sqrt(epoch+1)
+            self.E_optimizer.param_groups[0]['lr'] /= np.sqrt(epoch+1)
+            print("learning rate change!")
 
             for iter, (X, _) in enumerate(self.train_loader):
                 X = utils.to_var(X)
@@ -261,18 +260,18 @@ class LAI_mg_cl(object):
                 self.D_optimizer.step()
                 self.__reset_grad()
 
-                """Encoder"""
-                z = utils.generate_z(self.batch_size, self.z_dim, self.prior)
-                X_hat = self.G(z)
-                z_mu, z_sigma = self.E(self.FC(X_hat))
-                # - loglikehood
-                E_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
-                self.train_hist['E_loss'].append(E_loss.data[0])
-                E_err.append(E_loss.data[0])
-                # Optimize
-                E_loss.backward()
-                self.E_optimizer.step()
-                self.__reset_grad()
+                # """Encoder"""
+                # z = utils.generate_z(self.batch_size, self.z_dim, self.prior)
+                # X_hat = self.G(z)
+                # z_mu, z_sigma = self.E(self.FC(X_hat))
+                # # - loglikehood
+                # E_loss = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
+                # self.train_hist['E_loss'].append(E_loss.data[0])
+                # E_err.append(E_loss.data[0])
+                # # Optimize
+                # E_loss.backward()
+                # self.E_optimizer.step()
+                # self.__reset_grad()
 
                 """Generator"""
                 # Use both Discriminator and Encoder to update Generator
@@ -285,11 +284,11 @@ class LAI_mg_cl(object):
                 total_loss = G_loss + E_loss
                 self.train_hist['G_loss'].append(G_loss.data[0])
                 G_err.append(G_loss.data[0])
-                # E_err.append(E_loss.data[0])
+                E_err.append(E_loss.data[0])
                 # Optimize
                 total_loss.backward()
                 self.G_optimizer.step()
-                # self.E_optimizer.step()
+                self.E_optimizer.step()
                 self.__reset_grad()
 
                 """Plot"""

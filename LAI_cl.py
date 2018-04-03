@@ -153,6 +153,13 @@ class LAI_cl(object):
                                     transform=transforms.Compose([transforms.ToTensor()]))
             self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
             self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
+        elif self.dataset == 'emnist':
+            dset = datasets.EMNIST('data/emnist', split='balanced', train=True, download=True,
+                                    transform=transforms.Compose([transforms.ToTensor()]))
+            valid_dset = datasets.EMNIST('data/emnist', split='balanced', train=False, download=True,
+                                    transform=transforms.Compose([transforms.ToTensor()]))
+            self.data_loader = DataLoader(dset, batch_size=self.batch_size, shuffle=True)
+            self.valid_loader = DataLoader(valid_dset, batch_size=self.batch_size, shuffle=True)
         elif self.dataset == 'cifar10':
             dset = datasets.CIFAR10(root='data/mnist', train=True,
                                         download=True, transform=transforms.Compose([transforms.ToTensor()]))
@@ -199,6 +206,8 @@ class LAI_cl(object):
             #     self.pix_level = dset.train_data.shape[3]
             elif len(dset.train_data.shape) == 4:
                 self.pix_level = dset.train_data.shape[3]
+
+        print("Data shape is height:{}, width:{}, and pixel level:{}\n".format(self.height, self.width, self.pix_level))
 
         # networks init
         self.G = Generator(self.dataset, self.z_dim, self.height, self.width, self.pix_level)
@@ -259,11 +268,15 @@ class LAI_cl(object):
             D_err = []
             G_err = []
             # learning rate decay
-            if (epoch+1) % 20 == 0:
-                self.G_optimizer.param_groups[0]['lr'] /= 2
-                self.D_optimizer.param_groups[0]['lr'] /= 2
-                self.E_optimizer.param_groups[0]['lr'] /= 2
-                print("learning rate change!")
+            # if (epoch+1) % 20 == 0:
+            #     self.G_optimizer.param_groups[0]['lr'] /= 2
+            #     self.D_optimizer.param_groups[0]['lr'] /= 2
+            #     self.E_optimizer.param_groups[0]['lr'] /= 2
+            #     print("learning rate change!")
+            # self.G_optimizer.param_groups[0]['lr'] /= np.sqrt(epoch+1)
+            # self.D_optimizer.param_groups[0]['lr'] /= np.sqrt(epoch+1)
+            # self.E_optimizer.param_groups[0]['lr'] /= np.sqrt(epoch+1)
+            # print("learning rate change!")
 
 
             for iter, (X, _) in enumerate(self.data_loader):
