@@ -187,9 +187,12 @@ class LAI_mg_cl(object):
         self.E = Encoder()
         self.D = Discriminator()
         self.FC = FeatureExtrator()
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2))
-        self.D_optimizer = optim.Adam(chain(self.D.parameters(), self.FC.parameters()), lr=args.lrD, betas=(args.beta1, args.beta2))
-        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrE, betas=(args.beta1, args.beta2))
+        self.G_optimizer = optim.Adam(self.G.parameters(), lr=args.lrG, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
+        self.D_optimizer = optim.Adam(chain(self.D.parameters(), self.FC.parameters()), lr=args.lrD, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
+        self.E_optimizer = optim.Adam(self.E.parameters(), lr=args.lrE, betas=(args.beta1, args.beta2), weight_decay=args.weight_decay)
+        self.lr_decay = args.lr_decay
+        self.grad_clip = args.grad_clip
+        self.grad_clip_val = args.grad_clip_val
 
         if torch.cuda.is_available():
             self.G.cuda()
@@ -238,12 +241,6 @@ class LAI_mg_cl(object):
             D_err = []
             G_err = []
 
-            # learning rate decay
-            self.G_optimizer.param_groups[0]['lr'] /= np.sqrt(epoch+1)
-            self.D_optimizer.param_groups[0]['lr'] /= np.sqrt(epoch+1)
-            self.E_optimizer.param_groups[0]['lr'] /= np.sqrt(epoch+1)
-            print("learning rate change!")
-
             for iter, (X, _) in enumerate(self.train_loader):
                 X = utils.to_var(X)
 
@@ -257,6 +254,8 @@ class LAI_mg_cl(object):
                 D_err.append(D_loss.data[0])
                 # Optimize
                 D_loss.backward()
+                if self.grad_clip:
+                    torch.nn.utils.clip_grad_norm(chain(self.D.parameters(), self.FC.parameters()), self.grad_clip_val)
                 self.D_optimizer.step()
                 self.__reset_grad()
 
@@ -287,6 +286,9 @@ class LAI_mg_cl(object):
                 E_err.append(E_loss.data[0])
                 # Optimize
                 total_loss.backward()
+                if self.grad_clip:
+                    torch.nn.utils.clip_grad_norm(self.G.parameters(), self.grad_clip_val)
+                    torch.nn.utils.clip_grad_norm(self.E.parameters(), self.grad_clip_val)
                 self.G_optimizer.step()
                 self.E_optimizer.step()
                 self.__reset_grad()
@@ -301,6 +303,14 @@ class LAI_mg_cl(object):
                     break
 
             self.train_hist['per_epoch_time'].append(time.time() - epoch_start_time)
+
+            # learning rate decay
+            if self.lr_decay:
+                rate = np.sqrt(epoch+1)/np.sqrt(epoch+2)
+                self.G_optimizer.param_groups[0]['lr'] *= rate
+                self.D_optimizer.param_groups[0]['lr'] *= rate
+                self.E_optimizer.param_groups[0]['lr'] *= rate
+                print("learning rate change!")
 
             # Save model
             if (epoch+1) % 20 == 0:
@@ -354,22 +364,22 @@ class LAI_mg_cl(object):
         cmap = cmap.from_list('Custom cmap', cmaplist, cmap.N)
 
         fig, ax = plt.subplots(1, 1, figsize=(6, 6))
-        ax.scatter(Original[:,0], Original[:,1], c=color_vec, cmap=cmap, alpha=0.3)
+        ax.scatter(Original[:,0], Original[:,1], marker = '.', c=color_vec, cmap=cmap, alpha=0.3)
         fig.savefig(os.path.join(save_dir, 'X_original' + '_epoch%03d' % epoch + '.png'))
         plt.close()
 
         fig, ax = plt.subplots(1, 1, figsize=(6, 6))
-        ax.scatter(Recon[:10000,0], Recon[:10000,1], c=color_vec[:10000], cmap=cmap, alpha=0.3)
+        ax.scatter(Recon[:10000,0], Recon[:10000,1], marker = '.', c=color_vec[:10000], cmap=cmap, alpha=0.3)
         fig.savefig(os.path.join(save_dir, 'X_reconstruc' + '_epoch%03d' % epoch + '.png'))
         plt.close()
 
         fig, ax = plt.subplots(1, 1, figsize=(6, 6))
-        ax.scatter(Random[:10000,0], Random[:10000,1], alpha=0.3)
+        ax.scatter(Random[:10000,0], Random[:10000,1], marker = '.', alpha=0.3)
         fig.savefig(os.path.join(save_dir, 'X_random' + '_epoch%03d' % epoch + '.png'))
         plt.close()
 
         fig, ax = plt.subplots(1, 1, figsize=(6, 6))
-        ax.scatter(Z[:,0], Z[:,1], c=color_vec, cmap=cmap, alpha=0.3)
+        ax.scatter(Z[:,0], Z[:,1], marker = '.', c=color_vec, cmap=cmap, alpha=0.3)
         fig.savefig(os.path.join(save_dir, 'Z_mu' + '_epoch%03d' % epoch + '.png'))
         plt.close()
 

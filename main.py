@@ -27,11 +27,16 @@ def parse_args():
     parser.add_argument('--lrG', type=float, default=1e-4)
     parser.add_argument('--lrD', type=float, default=1e-4)
     parser.add_argument('--lrE', type=float, default=1e-4)
-    parser.add_argument('--beta1', type=float, default=0.5)
+    parser.add_argument('--lr_decay', type=bool, default=False, choices=[True, False])
+    parser.add_argument('--grad_clip', type=bool, default=False, choices=[True, False])
+    parser.add_argument('--grad_clip_val', type=float, default=3.0)
+    parser.add_argument('--beta1', type=float, default=0.9)
     parser.add_argument('--beta2', type=float, default=0.999)
+    parser.add_argument('--weight_decay', type=float, default=0.0)
+    
     parser.add_argument('--z_dim', type=int, default=64)
     parser.add_argument('--prior', type=str, default='normal', choices=['normal', 'uniform'])
-    parser.add_argument('--load_model', type=bool, default=False)
+    parser.add_argument('--load_model', type=bool, default=False, choices=[True, False])
 
     return check_args(parser.parse_args())
 
