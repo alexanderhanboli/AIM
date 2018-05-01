@@ -2,8 +2,9 @@
 
 ![](https://img.shields.io/badge/python-3.5.2-brightgreen.svg)
 
-
+<center>
 <img src="https://github.com/AlexanderYogurt/LAI/blob/master/demo/reconstructed_generate_animation.gif" width="128">
+ </center>
 ## Example
 1. MNIST
 ```bash
