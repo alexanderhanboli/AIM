@@ -4,6 +4,7 @@
 
 <center>
 <img src="https://github.com/AlexanderYogurt/LAI/blob/master/demo/reconstructed_generate_animation.gif" width="128">
+ <img src="https://github.com/AlexanderYogurt/LAI/blob/master/demo/variational_generate_animation.gif", width="128">
  </center>
 ## Example
 1. MNIST
