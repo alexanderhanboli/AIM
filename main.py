@@ -3,6 +3,7 @@ from LAI import LAI
 from LAI_cl import LAI_cl
 from dcLAI import dcLAI
 from LAI_mix_gaussian_cl import LAI_mg_cl
+from LAI_mix_gaussian_fGAN import LAI_mg_cl_fgan
 from LAI_mix_gaussian import LAI_mg
 
 """parsing and configuration"""
@@ -33,7 +34,7 @@ def parse_args():
     parser.add_argument('--beta1', type=float, default=0.9)
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--weight_decay', type=float, default=0.0)
-    
+
     parser.add_argument('--z_dim', type=int, default=64)
     parser.add_argument('--prior', type=str, default='normal', choices=['normal', 'uniform'])
     parser.add_argument('--load_model', type=bool, default=False, choices=[True, False])
@@ -76,7 +77,7 @@ def main():
         exit()
 
     if args.dataset == 'mixed-Gaussian':
-        gan = LAI_mg_cl(args)
+        gan = LAI_mg_cl_fgan(args)
     elif args.model_name == 'dcLAI':
         gan = dcLAI(args)
     else:
