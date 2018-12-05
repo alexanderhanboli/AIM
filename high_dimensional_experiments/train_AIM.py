@@ -36,7 +36,6 @@ from torch.autograd import Variable
 from itertools import chain
 from torchvision.utils import save_image
 from AIM_highd import *
-from ..utils import *
 
 if not os.path.exists(IMAGE_PATH):
     print('mkdir ', IMAGE_PATH)
@@ -45,7 +44,10 @@ if not os.path.exists(MODEL_PATH):
     print('mkdir ', MODEL_PATH)
     os.mkdir(MODEL_PATH)
 
-
+def prog_ali(e,b,b_total,loss_g,loss_d,dx,dgz):
+    sys.stdout.write("\r%3d: [%5d / %5d] G: %.4f D: %.4f D(x,Gz(x)): %.4f D(Gx(z),z): %.4f" % (e,b,b_total,loss_g,loss_d,dx,dgz))
+    sys.stdout.flush()
+    
 def train():
     # load models
     Gx = GeneratorX(zd=Zdim)

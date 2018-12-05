@@ -64,7 +64,7 @@ class DiscriminatorX(nn.Module):
             nn.LeakyReLU(0.02),
 
             nn.Conv2d(zd, zd, 4, 1),
-            nn.LeakyReLU(0.02)
+            nn.LeakyReLU(0.02),
 
             nn.Conv2d(zd, zd, 1, 1),
             nn.LeakyReLU(0.02),
