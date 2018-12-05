@@ -18,6 +18,8 @@ parser.add_argument('-z', '--zdim', type=int, default=128, metavar='Z',
 opt = parser.parse_args()
 
 import os
+import sys
+import numpy as np
 cuda = 0 if opt.gpu == -1 else 1
 if cuda:
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
@@ -47,7 +49,7 @@ if not os.path.exists(MODEL_PATH):
 def prog_ali(e,b,b_total,loss_g,loss_d,dx,dgz):
     sys.stdout.write("\r%3d: [%5d / %5d] G: %.4f D: %.4f D(x,Gz(x)): %.4f D(Gx(z),z): %.4f" % (e,b,b_total,loss_g,loss_d,dx,dgz))
     sys.stdout.flush()
-    
+
 def train():
     # load models
     Gx = GeneratorX(zd=Zdim)
@@ -104,8 +106,8 @@ def train():
             # reparametrization trick
             z_enc = encoded[:, :Zdim] + encoded[:, Zdim:].exp() * noisev # So encoded[:, Zdim] is log(sigma)
             z_mu, z_sigma = encoded[:, :Zdim], encoded[:, Zdim:]
-            dx_true = Dx(imgs)
-            dx_fake = Dx(imgs_fake)
+            d_true = Dx(imgs)
+            d_fake = Dx(imgs_fake)
             # reconstruction
 
 
