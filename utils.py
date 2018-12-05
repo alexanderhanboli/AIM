@@ -6,6 +6,7 @@ import imageio
 import matplotlib.pyplot as plt
 from torchvision import datasets, transforms
 from torch.autograd import Variable
+import sys
 
 def load_mnist(dataset):
     data_dir = os.path.join("./data", dataset)
@@ -157,3 +158,7 @@ def generate_z(batch_size, z_dim, prior):
         return to_var(torch.randn(batch_size, z_dim))
     elif prior == 'uniform':
         return to_var(torch.rand(batch_size, z_dim))
+
+def prog_ali(e,b,b_total,loss_g,loss_d,dx,dgz):
+    sys.stdout.write("\r%3d: [%5d / %5d] G: %.4f D: %.4f D(x,Gz(x)): %.4f D(Gx(z),z): %.4f" % (e,b,b_total,loss_g,loss_d,dx,dgz))
+    sys.stdout.flush()
