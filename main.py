@@ -5,6 +5,9 @@ from dcLAI import dcLAI
 from LAI_mix_gaussian_cl import LAI_mg_cl
 from LAI_mix_gaussian_fGAN import LAI_mg_cl_fgan
 from LAI_mix_gaussian import LAI_mg
+from VEEGAN_mix_gaussian import VEEGAN_mg
+from ALI_mix_gaussian import ALI_mg
+from gaussian_example import MixedGaussian
 
 """parsing and configuration"""
 def parse_args():
@@ -77,7 +80,7 @@ def main():
         exit()
 
     if args.dataset == 'mixed-Gaussian':
-        gan = LAI_mg_cl_fgan(args)
+        gan = ALI_mg(args)
     elif args.model_name == 'dcLAI':
         gan = dcLAI(args)
     else:
