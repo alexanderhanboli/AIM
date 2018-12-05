@@ -36,7 +36,7 @@ from torch.autograd import Variable
 from itertools import chain
 from torchvision.utils import save_image
 from AIM_highd import *
-from ../utils import *
+from ..utils import *
 
 if not os.path.exists(IMAGE_PATH):
     print('mkdir ', IMAGE_PATH)
