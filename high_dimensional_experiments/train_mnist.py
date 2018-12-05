@@ -36,7 +36,7 @@ from torch.autograd import Variable
 from itertools import chain
 from torchvision.utils import save_image
 from ALI_mnist import *
-from utils import *
+from ../utils import *
 
 if not os.path.exists(IMAGE_PATH):
     print('mkdir ', IMAGE_PATH)
@@ -102,7 +102,7 @@ def train():
             imgs_fake = Gx(zv)
             encoded = Gz(imgs)
             # reparametrization trick
-            z_enc = encoded[:, :Zdim] + encoded[:, Zdim:].exp() * noisev
+            z_enc = encoded[:, :Zdim] + encoded[:, Zdim:].exp() * noisev # So encoded[:, Zdim] is log(sigma)
             dx_true = Dx(imgs)
             dx_fake = Dx(imgs_fake)
             d_true = Dxz(torch.cat((dx_true, z_enc), dim=1))
