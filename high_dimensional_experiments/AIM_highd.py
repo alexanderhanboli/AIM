@@ -40,11 +40,11 @@ class GeneratorZ(nn.Module):
             nn.BatchNorm2d(zd),
             nn.LeakyReLU(0.02),
 
-            nn.Conv2d(zd, zd, 4, 1),
+            nn.Conv2d(zd, zd*2, 4, 1),
             nn.BatchNorm2d(zd),
             nn.LeakyReLU(0.02),
 
-            nn.Conv2d(zd, zd, 1, 1),
+            nn.Conv2d(zd*2, zd*2, 1, 1),
         )
 
     def forward(self, x):
