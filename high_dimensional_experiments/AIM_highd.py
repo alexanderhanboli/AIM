@@ -41,7 +41,7 @@ class GeneratorZ(nn.Module):
             nn.LeakyReLU(0.02),
 
             nn.Conv2d(zd, zd*2, 4, 1),
-            nn.BatchNorm2d(zd),
+            nn.BatchNorm2d(zd*2),
             nn.LeakyReLU(0.02),
 
             nn.Conv2d(zd*2, zd*2, 1, 1),
