@@ -35,7 +35,7 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 from itertools import chain
 from torchvision.utils import save_image
-from model import *
+from ALI_mnist import *
 from utils import *
 
 if not os.path.exists(IMAGE_PATH):
