@@ -44,8 +44,8 @@ parser.add_argument('--lr-d', type=float, default=1e-5, metavar='LR',
                     help='initial ADAM learning rate of D (default: 1e-5)')
 parser.add_argument('--decay', type=float, default=0, metavar='D',
                     help='weight decay or L2 penalty (default: 0)')
-parser.add_argument('-z', '--zdim', type=int, default=128, metavar='Z',
-                    help='dimension of latent vector (default: 128)')
+parser.add_argument('-z', '--zdim', type=int, default=32, metavar='Z',
+                    help='dimension of latent vector (default: 32)')
 
 opt = parser.parse_args()
 
@@ -78,15 +78,31 @@ if not os.path.exists(MODEL_PATH):
     print('mkdir ', MODEL_PATH)
     os.mkdir(MODEL_PATH)
 
-def prog_ali(e,b,b_total,loss_g,loss_d,dx,dgz):
-    sys.stdout.write("\r%3d: [%5d / %5d] G: %.4f D: %.4f D(x,Gz(x)): %.4f D(Gx(z),z): %.4f" % (e,b,b_total,loss_g,loss_d,dx,dgz))
+#TODO
+MODES = 1
+centriod_dict = {}
+with open("./mnist_mean.txt") as f:
+    lines = f.readlines()
+for i, (label, centriod) in enumerate(zip(lines[0::2], lines[1::2])):
+    if i >= MODES:
+        break
+    centriod_dict[int(label.strip())] = list([float(x) for x in centriod.strip().split(' ')])
+
+MEANS = np.array(list(centriod_dict.values()))
+MEAN = torch.from_numpy(MEANS[0]).view(1,500).float()
+MEAN = Variable(MEAN.cuda())
+print(MEAN.shape)
+print(type(MEAN))
+
+def prog_print(e,b,b_total,loss_g,loss_d,loss_e):
+    sys.stdout.write("\r%3d: [%5d / %5d] G: %.4f D: %.4f E: %.4f" % (e,b,b_total,loss_g,loss_d,loss_e))
     sys.stdout.flush()
 
 def train():
     # load models
-    Gx = GeneratorX(zd=Zdim)
-    Gz = GeneratorZ(zd=Zdim)
-    Dx = DiscriminatorX(zd=Zdim)
+    Gx = GeneratorX()
+    Gz = GeneratorZ()
+    Dx = DiscriminatorX()
 
     # load dataset
     # ==========================
@@ -99,16 +115,17 @@ def train():
                             pin_memory= True,
                             shuffle=True)
     validloader = DataLoader(dataset=valid_dataset,
-                            batch_size=BS,
+                            batch_size=2000,
                             pin_memory=True,
-                            shuffle=False)
+                            shuffle=True)
 
     N = len(dataloader)
+    # print(N)
 
-    z = torch.FloatTensor(BS, Zdim, 1, 1).normal_(0, 1)
-    z_pred = torch.FloatTensor(81, Zdim, 1, 1).normal_(0, 1) # 9 by 9
+    z = torch.FloatTensor(BS, Zdim).normal_(0, 1)
+    z_pred = torch.FloatTensor(1000, Zdim).normal_(0, 1)
     z_pred = Variable(z_pred)
-    noise = torch.FloatTensor(BS, Zdim, 1, 1).normal_(0, 1)
+    noise = torch.FloatTensor(BS, Zdim).normal_(0, 1)
 
     if cuda:
         Gx.cuda()
@@ -132,17 +149,21 @@ def train():
             if cuda:
                 imgs = imgs.cuda()
             imgs = Variable(imgs)
-            z.resize_(batch_size, Zdim, 1, 1).normal_(0, 1)
-            noise.resize_(batch_size, Zdim, 1, 1).normal_(0, 1)
+            z.resize_(batch_size, Zdim).normal_(0, 1)
+            noise.resize_(batch_size, Zdim).normal_(0, 1)
             zv = Variable(z)
             noisev = Variable(noise)
 
             # forward
             imgs_fake = Gx(zv)
-            encoded = Gz(imgs)
+            encoded = Gz(imgs_fake)
             # reparametrization trick
             z_enc = encoded[:, :Zdim] + encoded[:, Zdim:].exp() * noisev # So encoded[:, Zdim] is log(sigma)
             z_mu, z_sigma = encoded[:, :Zdim], encoded[:, Zdim:]
+
+            # print(z_mu.shape)
+            # break
+
             d_true = Dx(imgs)
             d_fake = Dx(imgs_fake)
             # reconstruction
@@ -150,8 +171,8 @@ def train():
 
             # compute loss
             loss_d = torch.mean(softplus(-d_true) + softplus(d_fake))
-            loss_g = torch.mean(softplus(d_true) + softplus(-d_fake))
-            loss_e = torch.mean(torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
+            loss_g = torch.mean(softplus(-d_fake))
+            loss_e = torch.mean(torch.mean(0.5 * (zv - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
             loss_ge = loss_g + loss_e
 
             # backward & update params
@@ -163,22 +184,36 @@ def train():
             loss_ge.backward()
             optim_g.step()
 
-            prog_ali(epoch+1, i+1, N, loss_g.data[0], loss_d.data[0], d_true.data.mean(), d_fake.data.mean())
+            prog_print(epoch+1, i+1, N, loss_g.data[0], loss_d.data[0], loss_e.data[0])
 
         # generate fake images
-        save_image(Gx(z_pred).data,
-                   os.path.join(IMAGE_PATH,'%d.png' % (epoch+1)),
-                   nrow=9, padding=1,
-                   normalize=False)
+        # save_image(Gx(z_pred).data,
+        #            os.path.join(IMAGE_PATH,'%d.png' % (epoch+1)),
+        #            nrow=9, padding=1,
+        #            normalize=False)
         # save models
+        print("-------> Saving models...")
         torch.save(Gx.state_dict(),
                    os.path.join(MODEL_PATH, 'Gx-%d.pth' % (epoch+1)))
         torch.save(Gz.state_dict(),
                    os.path.join(MODEL_PATH, 'Gz-%d.pth' % (epoch+1)))
         torch.save(Dx.state_dict(),
                    os.path.join(MODEL_PATH, 'Dx-%d.pth'  % (epoch+1)))
-        print()
 
+        # evaluate models
+        x_eval = Gx(z_pred)
+        for i, (imgs, _) in enumerate(validloader):
+            if cuda:
+                imgs = imgs.cuda()
+            imgs = Variable(imgs)
+            z_eval = Gz(imgs)
+            break
+        print(len(z_eval.data))
+        z_logli = -torch.mean(torch.mean(0.5 * z_eval ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
+        print("log-likehood of z is {}".format(z_logli.data))
+
+        x_logli = -torch.mean(torch.mean(0.5 * (x_eval - MEAN) ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
+        print("log-likehood of x is {}".format(x_logli.data))
 
 if __name__ == '__main__':
     train()
