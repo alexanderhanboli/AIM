@@ -49,10 +49,14 @@ BATCH_SIZE = 128
 MONITORING_BATCH_SIZE = 500
 PRIORS = None
 
+MODES = 1
+
 centriod_dict = {}
 with open("./mnist_mean.txt") as f:
     lines = f.readlines()
-for label, centriod in zip(lines[0::2], lines[1::2]):
+for i, label, centriod in enumerate(zip(lines[0::2], lines[1::2])):
+    if i >= MODES:
+        break
     centriod_dict[int(label.strip())] = list([float(x) for x in centriod.strip().split(' ')])
 
 MEANS = np.array(list(centriod_dict.values()))
