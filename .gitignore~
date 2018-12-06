@@ -45,5 +45,10 @@ Thumbs.db
 *.ipynb_checkpoints/
 floyd_requirements.txt
 
+output/*
+images/*
+MNIST/*
+models/*
+
 *.pth
 *.png
