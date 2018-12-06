@@ -47,9 +47,14 @@ BATCH_SIZE = 128
 MONITORING_BATCH_SIZE = 500
 PRIORS = None
 
-MEANS = [np.array([i, j]) for i, j in itertools.product(range(-4, 5, 2),
-                                                           range(-4, 5, 2))]
-VARIANCES = [0.05 ** 2 * np.eye(len(mean)) for mean in MEANS]
+centriod_dict = {}
+with open("./mnist_mean.txt") as f:
+    lines = f.readlines()
+for label, centriod in zip(lines[0::2], lines[1::2]):
+    centriod_dict[int(label.strip())] = list([float(x) for x in centriod.strip().split(' ')])
+
+MEANS = np.array(list(centriod_dict.values()))
+VARIANCES = [1.0 ** 2 * np.eye(len(mean)) for mean in MEANS]
 
 
 class GaussianMixture():

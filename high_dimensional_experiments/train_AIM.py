@@ -1,3 +1,35 @@
+from __future__ import (division, print_function, )
+from collections import OrderedDict
+from scipy.stats import multivariate_normal
+import numpy.random as npr
+import numpy as np
+from itertools import *
+
+from fuel import config
+from fuel.datasets import H5PYDataset, IndexableDataset
+from fuel.transformers.defaults import uint8_pixels_to_floatX
+from fuel.utils import find_in_data_path
+from fuel.streams import DataStream
+from fuel.schemes import ShuffledScheme
+
+import torch
+import torch.autograd as autograd
+import torch.optim as optim
+import torchvision
+import torchvision.transforms as transforms
+from torch.autograd import Variable
+from torch.utils.data import Dataset
+
+import scipy.misc
+import imageio
+import matplotlib.gridspec as gridspec
+import os, time, pickle
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
+plt.switch_backend('agg')
+import Gaussian_Sample_HighD as GS
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-g', '--gpu', type=str, default='-1', metavar='GPU',
@@ -58,14 +90,19 @@ def train():
 
     # load dataset
     # ==========================
-    kwargs = dict(num_workers=1, pin_memory=True) if cuda else {}
-    dataloader = DataLoader(
-        datasets.MNIST('MNIST', download=True,
-                       transform=transforms.Compose([
-                           transforms.ToTensor()
-                       ])),
-        batch_size=BS, shuffle=True, **kwargs
-    )
+    train_data, valid_data = GS.main()
+    train_dataset = GS.Gaussian_Data(train_data)
+    valid_dataset = GS.Gaussian_Data(valid_data)
+
+    data_loader = DataLoader(dataset=train_dataset,
+                            batch_size=self.batch_size,
+                            pin_memory= True,
+                            shuffle=True)
+    valid_loader = DataLoader(dataset=valid_dataset,
+                            batch_size=self.batch_size,
+                            pin_memory=True,
+                            shuffle=False)
+
     N = len(dataloader)
 
     z = torch.FloatTensor(BS, Zdim, 1, 1).normal_(0, 1)
