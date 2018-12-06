@@ -94,12 +94,12 @@ def train():
     train_dataset = GS.Gaussian_Data(train_data)
     valid_dataset = GS.Gaussian_Data(valid_data)
 
-    data_loader = DataLoader(dataset=train_dataset,
-                            batch_size=self.batch_size,
+    dataloader = DataLoader(dataset=train_dataset,
+                            batch_size=BS,
                             pin_memory= True,
                             shuffle=True)
-    valid_loader = DataLoader(dataset=valid_dataset,
-                            batch_size=self.batch_size,
+    validloader = DataLoader(dataset=valid_dataset,
+                            batch_size=BS,
                             pin_memory=True,
                             shuffle=False)
 

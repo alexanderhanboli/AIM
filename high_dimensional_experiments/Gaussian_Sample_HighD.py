@@ -38,6 +38,8 @@ from functools import reduce
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
+import pickle
+import os
 plt.switch_backend('agg')
 
 NUM_EPOCHS = 200
@@ -94,7 +96,7 @@ class GaussianMixture():
 
 def create_gaussian_mixture_data(batch_size, monitoring_batch_size,
                                          means=None, variances=None, priors=None,
-                                         rng=None, num_examples=100000,
+                                         rng=None, num_examples=10,
                                          sources=('features', )):
     train_set = GaussianMixture(num_examples=num_examples, means=means,
                                 variances=variances, priors=priors,
@@ -191,10 +193,20 @@ class Gaussian_Data(Dataset):
         return self.x[idx], self.y[idx]
 
 def main():
-    data = create_gaussian_mixture_data(
-        batch_size=BATCH_SIZE, monitoring_batch_size=MONITORING_BATCH_SIZE,
-        means=MEANS, variances=VARIANCES, priors=PRIORS)
+    try:
+        with open('gaussian_train_data', 'rb') as f:
+            train_data = pickle.load(f)
+        with open('gaussian_valid_data', 'rb') as f:
+            valid_data = pickle.load(f)
+    except:
+        data = create_gaussian_mixture_data(
+            batch_size=BATCH_SIZE, monitoring_batch_size=MONITORING_BATCH_SIZE,
+            means=MEANS, variances=VARIANCES, priors=PRIORS)
 
-    train_data = data[0].get_data()
-    valid_data = data[1].get_data()
+        train_data = data[0].get_data()
+        valid_data = data[1].get_data()
+        with open('gaussian_train_data', 'wb') as f:
+            pickle.dump(train_data, f)
+        with open('gaussian_valid_data', 'wb') as f:
+            pickle.dump(valid_data, f)
     return train_data, valid_data
