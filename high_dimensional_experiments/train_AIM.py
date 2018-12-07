@@ -30,6 +30,8 @@ import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 import Gaussian_Sample_HighD as GS
 
+from scipy.stats import multivariate_normal, entropy
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-g', '--gpu', type=str, default='-1', metavar='GPU',
@@ -44,8 +46,8 @@ parser.add_argument('--lr-d', type=float, default=1e-5, metavar='LR',
                     help='initial ADAM learning rate of D (default: 1e-5)')
 parser.add_argument('--decay', type=float, default=0, metavar='D',
                     help='weight decay or L2 penalty (default: 0)')
-parser.add_argument('-z', '--zdim', type=int, default=128, metavar='Z',
-                    help='dimension of latent vector (default: 128)')
+parser.add_argument('-z', '--zdim', type=int, default=16, metavar='Z',
+                    help='dimension of latent vector (default: 16)')
 
 opt = parser.parse_args()
 
@@ -123,7 +125,7 @@ def train():
     # print(N)
 
     z = torch.FloatTensor(BS, Zdim).normal_(0, 1)
-    z_pred = torch.FloatTensor(1000, Zdim).normal_(0, 1)
+    z_pred = torch.FloatTensor(2000, Zdim).normal_(0, 1)
     z_pred = Variable(z_pred)
     noise = torch.FloatTensor(BS, Zdim).normal_(0, 1)
 
@@ -209,8 +211,13 @@ def train():
             z_eval = Gz(imgs)
             break
         print(len(z_eval.data))
-        z_logli = -torch.mean(torch.mean(0.5 * z_eval ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
-        print("log-likehood of z is {}".format(z_logli.data))
+
+        pk = multivariate_normal.pdf(z_eval.data[:, :Zdim], mean=np.zeros(16))
+        print("The z entropy is {}".format(entropy(pk)))
+
+
+        # z_logli = -torch.mean(torch.mean(0.5 * z_eval ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
+        # print("log-likehood of z is {}".format(z_logli.data))
 
         # x_logli = -torch.mean(torch.mean(0.5 * (x_eval - MEAN) ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
         # print("log-likehood of x is {}".format(x_logli.data))

@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class GeneratorX(nn.Module):
-    def __init__(self, zd=32, xd=500):
+    def __init__(self, zd=16, xd=256):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(zd, 8*zd),
@@ -31,7 +31,7 @@ class GeneratorX(nn.Module):
         return F.tanh(self.net(x))
 
 class GeneratorZ(nn.Module):
-    def __init__(self, zd=32, xd=500):
+    def __init__(self, zd=16, xd=256):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(xd, zd*4),
@@ -53,7 +53,7 @@ class GeneratorZ(nn.Module):
         return self.net(x)
 
 class DiscriminatorX(nn.Module):
-    def __init__(self, xd = 500):
+    def __init__(self, xd = 256):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(xd, xd //4),

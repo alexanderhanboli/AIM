@@ -216,6 +216,7 @@ def main():
 
         train_data = data[0].get_data()
         valid_data = data[1].get_data()
+        print("Saving data...")
         with open('gaussian_train_data', 'wb') as f:
             pickle.dump(train_data, f)
         with open('gaussian_valid_data', 'wb') as f:
