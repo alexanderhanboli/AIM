@@ -60,9 +60,10 @@ PRIORS = None
 #
 # MEANS = list(centriod_dict.values())
 
-trans_mtx = np.random.randn(128, 32 * 32)
-MEANS = np.random.randn(10000, 128).dot(trans_mtx)
+trans_mtx = np.random.randn(16, 256)
+MEANS = np.random.randn(500, 16).dot(trans_mtx)
 VARIANCES = [1.0 ** 2 * np.eye(len(mean)) for mean in MEANS]
+
 
 
 class GaussianMixture():
@@ -108,7 +109,7 @@ def create_gaussian_mixture_data(batch_size, monitoring_batch_size,
                                 variances=variances, priors=priors,
                                 rng=rng, sources=sources)
 
-    valid_set = GaussianMixture(num_examples=num_examples,
+    valid_set = GaussianMixture(num_examples=10000,
                                 means=means, variances=variances,
                                 priors=priors, rng=rng, sources=sources)
 
@@ -167,7 +168,10 @@ class GaussianMixtureDistribution(object):
         # Sampling priors
         samples = []
         fathers = self._sample_prior(nsamples=nsamples).tolist()
-        for father in fathers:
+        print("Finished sampling prior...")
+        for i, father in enumerate(fathers):
+            if (i+1)%100 == 0:
+                print("Done {}".format(i+1))
             samples.append(self._sample_gaussian(self.means[father],
                                                  self.variances[father]))
         return as_array(samples), as_array(fathers)
