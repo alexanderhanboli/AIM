@@ -40,8 +40,8 @@ parser.add_argument('-b', '--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 32)')
 parser.add_argument('-e', '--epochs', type=int, default=100, metavar='E',
                     help='how many epochs to train (default: 100)')
-parser.add_argument('--lr-g', type=float, default=2e-4, metavar='LR',
-                    help='initial ADAM learning rate of G (default: 2e-4)')
+parser.add_argument('--lr-g', type=float, default=1e-5, metavar='LR',
+                    help='initial ADAM learning rate of G (default: 1e-5)')
 parser.add_argument('--lr-d', type=float, default=1e-5, metavar='LR',
                     help='initial ADAM learning rate of D (default: 1e-5)')
 parser.add_argument('--decay', type=float, default=0, metavar='D',
@@ -108,7 +108,7 @@ def train():
 
     # load dataset
     # ==========================
-    train_data, valid_data = GS.main()
+    train_data, valid_data, trans_mtx = GS.main()
     train_dataset = GS.Gaussian_Data(train_data)
     valid_dataset = GS.Gaussian_Data(valid_data)
 
@@ -125,7 +125,7 @@ def train():
     # print(N)
 
     z = torch.FloatTensor(BS, Zdim).normal_(0, 1)
-    z_pred = torch.FloatTensor(2000, Zdim).normal_(0, 1)
+    z_pred = torch.FloatTensor(1000, Zdim).normal_(0, 1)
     z_pred = Variable(z_pred)
     noise = torch.FloatTensor(BS, Zdim).normal_(0, 1)
 
@@ -204,17 +204,23 @@ def train():
 
         # evaluate models
         x_eval = Gx(z_pred)
+        x_eval = x_eval.data.cpu().numpy()
         for i, (imgs, _) in enumerate(validloader):
             if cuda:
                 imgs = imgs.cuda()
             imgs = Variable(imgs)
             z_eval = Gz(imgs)
             break
-        print(len(z_eval.data))
+        # print(len(z_eval.data))
 
         pk = multivariate_normal.pdf(z_eval.data[:, :Zdim], mean=np.zeros(16))
         print("The z entropy is {}".format(entropy(pk)))
 
+        x_mean = np.dot(z_pred.data.cpu().numpy(), trans_mtx)
+        diff = np.subtract(x_eval, x_mean) ** 2
+
+        l2 = np.mean(np.sqrt(np.sum(diff, axis=1)))
+        print("The x reconstruction is {}\n".format(l2))
 
         # z_logli = -torch.mean(torch.mean(0.5 * z_eval ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
         # print("log-likehood of z is {}".format(z_logli.data))

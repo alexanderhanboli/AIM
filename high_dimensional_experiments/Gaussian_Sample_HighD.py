@@ -29,7 +29,7 @@ import scipy.misc
 import imageio
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import os, time
+import os, time, sys
 from itertools import *
 from torch.utils.data import Dataset
 from fuel import config
@@ -62,7 +62,7 @@ PRIORS = None
 
 trans_mtx = np.random.randn(16, 256)
 MEANS = np.random.randn(500, 16).dot(trans_mtx)
-VARIANCES = [1.0 ** 2 * np.eye(len(mean)) for mean in MEANS]
+VARIANCES = [0.2 ** 2 * np.eye(len(mean)) for mean in MEANS]
 
 
 
@@ -105,11 +105,13 @@ def create_gaussian_mixture_data(batch_size, monitoring_batch_size,
                                          means=None, variances=None, priors=None,
                                          rng=None, num_examples=100000,
                                          sources=('features', )):
+    print("\rGenerating training set...")
     train_set = GaussianMixture(num_examples=num_examples, means=means,
                                 variances=variances, priors=priors,
                                 rng=rng, sources=sources)
 
-    valid_set = GaussianMixture(num_examples=10000,
+    print("\rGenerating testing set...")
+    valid_set = GaussianMixture(num_examples=num_examples,
                                 means=means, variances=variances,
                                 priors=priors, rng=rng, sources=sources)
 
@@ -168,10 +170,11 @@ class GaussianMixtureDistribution(object):
         # Sampling priors
         samples = []
         fathers = self._sample_prior(nsamples=nsamples).tolist()
-        print("Finished sampling prior...")
         for i, father in enumerate(fathers):
-            if (i+1)%100 == 0:
-                print("Done {}".format(i+1))
+            sys.stdout.write("\rStep: %5d / %5d" % (i+1, nsamples))
+            sys.stdout.flush()
+            # if (i+1)%100 == 0:
+            #     print("Done {}".format(i+1))
             samples.append(self._sample_gaussian(self.means[father],
                                                  self.variances[father]))
         return as_array(samples), as_array(fathers)
@@ -221,4 +224,4 @@ def main():
             pickle.dump(train_data, f)
         with open('gaussian_valid_data', 'wb') as f:
             pickle.dump(valid_data, f)
-    return train_data, valid_data
+    return train_data, valid_data, trans_mtx
