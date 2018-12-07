@@ -49,13 +49,19 @@ BATCH_SIZE = 128
 MONITORING_BATCH_SIZE = 500
 PRIORS = None
 
-centriod_dict = {}
-with open("./mnist_mean.txt") as f:
-    lines = f.readlines()
-for label, centriod in zip(lines[0::2], lines[1::2]):
-    centriod_dict[int(label.strip())] = list([float(x) for x in centriod.strip().split(' ')])
+# MODES = 1
+# centriod_dict = {}
+# with open("./mnist_mean.txt") as f:
+#     lines = f.readlines()
+# for i, (label, centriod) in enumerate(zip(lines[0::2], lines[1::2])):
+#     if i >= MODES:
+#         break
+#     centriod_dict[int(label.strip())] = list([float(x) for x in centriod.strip().split(' ')])
+#
+# MEANS = list(centriod_dict.values())
 
-MEANS = np.array(list(centriod_dict.values()))
+trans_mtx = np.random.randn(128, 32 * 32)
+MEANS = np.random.randn(10000, 128).dot(trans_mtx)
 VARIANCES = [1.0 ** 2 * np.eye(len(mean)) for mean in MEANS]
 
 
@@ -96,7 +102,7 @@ class GaussianMixture():
 
 def create_gaussian_mixture_data(batch_size, monitoring_batch_size,
                                          means=None, variances=None, priors=None,
-                                         rng=None, num_examples=10,
+                                         rng=None, num_examples=100000,
                                          sources=('features', )):
     train_set = GaussianMixture(num_examples=num_examples, means=means,
                                 variances=variances, priors=priors,
@@ -199,6 +205,7 @@ def main():
         with open('gaussian_valid_data', 'rb') as f:
             valid_data = pickle.load(f)
     except:
+        print("Generating data...")
         data = create_gaussian_mixture_data(
             batch_size=BATCH_SIZE, monitoring_batch_size=MONITORING_BATCH_SIZE,
             means=MEANS, variances=VARIANCES, priors=PRIORS)
