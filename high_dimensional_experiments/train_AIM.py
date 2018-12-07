@@ -117,7 +117,7 @@ def train():
                             pin_memory= True,
                             shuffle=True)
     validloader = DataLoader(dataset=valid_dataset,
-                            batch_size=2000,
+                            batch_size=5000,
                             pin_memory=True,
                             shuffle=True)
 
@@ -125,7 +125,7 @@ def train():
     # print(N)
 
     z = torch.FloatTensor(BS, Zdim).normal_(0, 1)
-    z_pred = torch.FloatTensor(1000, Zdim).normal_(0, 1)
+    z_pred = torch.FloatTensor(5000, Zdim).normal_(0, 1)
     z_pred = Variable(z_pred)
     noise = torch.FloatTensor(BS, Zdim).normal_(0, 1)
 
