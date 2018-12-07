@@ -49,17 +49,19 @@ BATCH_SIZE = 128
 MONITORING_BATCH_SIZE = 500
 PRIORS = None
 
-MODES = 1
+# MODES = 1
+# centriod_dict = {}
+# with open("./mnist_mean.txt") as f:
+#     lines = f.readlines()
+# for i, (label, centriod) in enumerate(zip(lines[0::2], lines[1::2])):
+#     if i >= MODES:
+#         break
+#     centriod_dict[int(label.strip())] = list([float(x) for x in centriod.strip().split(' ')])
+#
+# MEANS = list(centriod_dict.values())
 
-centriod_dict = {}
-with open("./mnist_mean.txt") as f:
-    lines = f.readlines()
-for i, (label, centriod) in enumerate(zip(lines[0::2], lines[1::2])):
-    if i >= MODES:
-        break
-    centriod_dict[int(label.strip())] = list([float(x) for x in centriod.strip().split(' ')])
-
-MEANS = np.array(list(centriod_dict.values()))
+trans_mtx = np.random.randn(128, 32 * 32)
+MEANS = np.random.randn(10000, 128).dot(trans_mtx)
 VARIANCES = [1.0 ** 2 * np.eye(len(mean)) for mean in MEANS]
 
 

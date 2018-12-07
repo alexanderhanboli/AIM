@@ -44,8 +44,8 @@ parser.add_argument('--lr-d', type=float, default=1e-5, metavar='LR',
                     help='initial ADAM learning rate of D (default: 1e-5)')
 parser.add_argument('--decay', type=float, default=0, metavar='D',
                     help='weight decay or L2 penalty (default: 0)')
-parser.add_argument('-z', '--zdim', type=int, default=32, metavar='Z',
-                    help='dimension of latent vector (default: 32)')
+parser.add_argument('-z', '--zdim', type=int, default=128, metavar='Z',
+                    help='dimension of latent vector (default: 128)')
 
 opt = parser.parse_args()
 
@@ -79,20 +79,20 @@ if not os.path.exists(MODEL_PATH):
     os.mkdir(MODEL_PATH)
 
 #TODO
-MODES = 1
-centriod_dict = {}
-with open("./mnist_mean.txt") as f:
-    lines = f.readlines()
-for i, (label, centriod) in enumerate(zip(lines[0::2], lines[1::2])):
-    if i >= MODES:
-        break
-    centriod_dict[int(label.strip())] = list([float(x) for x in centriod.strip().split(' ')])
-
-MEANS = np.array(list(centriod_dict.values()))
-MEAN = torch.from_numpy(MEANS[0]).view(1,500).float()
-MEAN = Variable(MEAN.cuda())
-print(MEAN.shape)
-print(type(MEAN))
+# MODES = 1
+# centriod_dict = {}
+# with open("./mnist_mean.txt") as f:
+#     lines = f.readlines()
+# for i, (label, centriod) in enumerate(zip(lines[0::2], lines[1::2])):
+#     if i >= MODES:
+#         break
+#     centriod_dict[int(label.strip())] = list([float(x) for x in centriod.strip().split(' ')])
+#
+# MEANS = np.array(list(centriod_dict.values()))
+# MEAN = torch.from_numpy(MEANS[0]).view(1,500).float()
+# MEAN = Variable(MEAN.cuda())
+# print(MEAN.shape)
+# print(type(MEAN))
 
 def prog_print(e,b,b_total,loss_g,loss_d,loss_e):
     sys.stdout.write("\r%3d: [%5d / %5d] G: %.4f D: %.4f E: %.4f" % (e,b,b_total,loss_g,loss_d,loss_e))
@@ -212,8 +212,8 @@ def train():
         z_logli = -torch.mean(torch.mean(0.5 * z_eval ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
         print("log-likehood of z is {}".format(z_logli.data))
 
-        x_logli = -torch.mean(torch.mean(0.5 * (x_eval - MEAN) ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
-        print("log-likehood of x is {}".format(x_logli.data))
+        # x_logli = -torch.mean(torch.mean(0.5 * (x_eval - MEAN) ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
+        # print("log-likehood of x is {}".format(x_logli.data))
 
 if __name__ == '__main__':
     train()
