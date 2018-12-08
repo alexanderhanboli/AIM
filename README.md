@@ -1,4 +1,4 @@
-# LAI: Latent-likelihood Adversarial Inference
+# AIM: Adversarial Inference by Matching priors and conditionals
 
 ![](https://img.shields.io/badge/python-3.5.2-brightgreen.svg)
 
