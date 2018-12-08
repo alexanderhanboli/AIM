@@ -162,14 +162,8 @@ def train():
             # reparametrization trick
             z_enc = encoded[:, :Zdim] + encoded[:, Zdim:].exp() * noisev # So encoded[:, Zdim] is log(sigma)
             z_mu, z_sigma = encoded[:, :Zdim], encoded[:, Zdim:]
-
-            # print(z_mu.shape)
-            # break
-
             d_true = Dx(imgs)
             d_fake = Dx(imgs_fake)
-            # reconstruction
-
 
             # compute loss
             loss_d = torch.mean(softplus(-d_true) + softplus(d_fake))
@@ -215,14 +209,20 @@ def train():
 
         noise = Variable(torch.FloatTensor(5000, Zdim).normal_(0, 1).cuda())
         z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].exp() * noise
-        pk = multivariate_normal.pdf(z_sample.data, mean=np.zeros(16))
-        true_normal = np.random.randn(5000, Zdim)
-        qk = multivariate_normal.pdf(true_normal, mean=np.zeros(16))
-        true_unif = np.random.rand(5000, Zdim)
-        fk = multivariate_normal.pdf(true_unif, mean=np.zeros(16))
-        print("The z entropy is {}".format(entropy(pk)))
-        print("A refence Normal entropy is {}".format(entropy(qk)))
-        print("A bad entropy is {}".format(entropy(fk)))
+        # pk = multivariate_normal.pdf(z_sample.data, mean=np.zeros(16))
+        # #qk = np.repeat(1.0/5000, 5000)
+        # true_normal = np.random.randn(5000, Zdim)
+        # qk = multivariate_normal.pdf(true_normal, mean=np.zeros(16))
+        # true_unif = np.random.rand(5000, Zdim)
+        # fk = multivariate_normal.pdf(true_unif, mean=np.zeros(16))
+        # print("The z entropy is {}".format(entropy(pk)))
+        # print("A refence Normal entropy is {}".format(entropy(qk)))
+        # print("A bad entropy is {}".format(entropy(fk)))
+
+        # Normality test
+        from scipy.stats import normaltest, shapiro
+        #print("The normal test p-value is: {}".format(normaltest(z_sample.data)))
+        print("The shapiro test p-value is: {}".format(shapiro(z_sample.data)))
 
         x_mean = np.dot(z_pred.data.cpu().numpy(), trans_mtx)
         diff = np.subtract(x_eval, x_mean) ** 2

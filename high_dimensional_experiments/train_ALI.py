@@ -1,3 +1,37 @@
+from __future__ import (division, print_function, )
+from collections import OrderedDict
+from scipy.stats import multivariate_normal
+import numpy.random as npr
+import numpy as np
+from itertools import *
+
+from fuel import config
+from fuel.datasets import H5PYDataset, IndexableDataset
+from fuel.transformers.defaults import uint8_pixels_to_floatX
+from fuel.utils import find_in_data_path
+from fuel.streams import DataStream
+from fuel.schemes import ShuffledScheme
+
+import torch
+import torch.autograd as autograd
+import torch.optim as optim
+import torchvision
+import torchvision.transforms as transforms
+from torch.autograd import Variable
+from torch.utils.data import Dataset
+
+import scipy.misc
+import imageio
+import matplotlib.gridspec as gridspec
+import os, time, pickle
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as plt
+plt.switch_backend('agg')
+import Gaussian_Sample_HighD as GS
+
+from scipy.stats import multivariate_normal, entropy
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-g', '--gpu', type=str, default='-1', metavar='GPU',
@@ -6,25 +40,27 @@ parser.add_argument('-b', '--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 32)')
 parser.add_argument('-e', '--epochs', type=int, default=100, metavar='E',
                     help='how many epochs to train (default: 100)')
-parser.add_argument('--lr-g', type=float, default=2e-4, metavar='LR',
-                    help='initial ADAM learning rate of G (default: 2e-4)')
+parser.add_argument('--lr-g', type=float, default=1e-5, metavar='LR',
+                    help='initial ADAM learning rate of G (default: 1e-5)')
 parser.add_argument('--lr-d', type=float, default=1e-5, metavar='LR',
                     help='initial ADAM learning rate of D (default: 1e-5)')
 parser.add_argument('--decay', type=float, default=0, metavar='D',
                     help='weight decay or L2 penalty (default: 0)')
-parser.add_argument('-z', '--zdim', type=int, default=128, metavar='Z',
-                    help='dimension of latent vector (default: 128)')
+parser.add_argument('-z', '--zdim', type=int, default=16, metavar='Z',
+                    help='dimension of latent vector (default: 16)')
 
 opt = parser.parse_args()
 
 import os
+import sys
+import numpy as np
 cuda = 0 if opt.gpu == -1 else 1
 if cuda:
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
 BS = opt.batch_size
 Zdim = opt.zdim
-IMAGE_PATH = 'images'
-MODEL_PATH = 'models'
+IMAGE_PATH = 'ALI_images'
+MODEL_PATH = 'ALI_models'
 
 # ===============
 import torch
@@ -35,8 +71,7 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 from itertools import chain
 from torchvision.utils import save_image
-from ALI_mnist import *
-from ../utils import *
+from ALI_highd import *
 
 if not os.path.exists(IMAGE_PATH):
     print('mkdir ', IMAGE_PATH)
@@ -45,30 +80,54 @@ if not os.path.exists(MODEL_PATH):
     print('mkdir ', MODEL_PATH)
     os.mkdir(MODEL_PATH)
 
+#TODO
+# MODES = 1
+# centriod_dict = {}
+# with open("./mnist_mean.txt") as f:
+#     lines = f.readlines()
+# for i, (label, centriod) in enumerate(zip(lines[0::2], lines[1::2])):
+#     if i >= MODES:
+#         break
+#     centriod_dict[int(label.strip())] = list([float(x) for x in centriod.strip().split(' ')])
+#
+# MEANS = np.array(list(centriod_dict.values()))
+# MEAN = torch.from_numpy(MEANS[0]).view(1,500).float()
+# MEAN = Variable(MEAN.cuda())
+# print(MEAN.shape)
+# print(type(MEAN))
+
+def prog_print(e,b,b_total,loss_g,loss_d, d1, d2):
+    sys.stdout.write("\r%3d: [%5d / %5d] G: %.4f D: %.4f Dtrue: %.4f Dfalse: %.4f" % (e,b,b_total,loss_g,loss_d,d1,d2))
+    sys.stdout.flush()
 
 def train():
     # load models
-    Gx = GeneratorX(zd=Zdim)
-    Gz = GeneratorZ(zd=Zdim)
-    Dx = DiscriminatorX(zd=Zdim)
-    Dxz = DiscriminatorXZ(zd=Zdim)
+    Gx = GeneratorX()
+    Gz = GeneratorZ()
+    Dx = DiscriminatorX()
+    Dxz = DiscriminatorXZ()
 
     # load dataset
     # ==========================
-    kwargs = dict(num_workers=1, pin_memory=True) if cuda else {}
-    dataloader = DataLoader(
-        datasets.MNIST('MNIST', download=True,
-                       transform=transforms.Compose([
-                           transforms.ToTensor()
-                       ])),
-        batch_size=BS, shuffle=True, **kwargs
-    )
+    train_data, valid_data, trans_mtx = GS.main()
+    train_dataset = GS.Gaussian_Data(train_data)
+    valid_dataset = GS.Gaussian_Data(valid_data)
+
+    dataloader = DataLoader(dataset=train_dataset,
+                            batch_size=BS,
+                            pin_memory= True,
+                            shuffle=True)
+    validloader = DataLoader(dataset=valid_dataset,
+                            batch_size=5000,
+                            pin_memory=True,
+                            shuffle=True)
+
     N = len(dataloader)
 
-    z = torch.FloatTensor(BS, Zdim, 1, 1).normal_(0, 1)
-    z_pred = torch.FloatTensor(81, Zdim, 1, 1).normal_(0, 1)
+    z = torch.FloatTensor(BS, Zdim).normal_(0, 1)
+    z_pred = torch.FloatTensor(5000, Zdim).normal_(0, 1)
     z_pred = Variable(z_pred)
-    noise = torch.FloatTensor(BS, Zdim, 1, 1).normal_(0, 1)
+    noise = torch.FloatTensor(BS, Zdim).normal_(0, 1)
 
     if cuda:
         Gx.cuda()
@@ -93,8 +152,8 @@ def train():
             if cuda:
                 imgs = imgs.cuda()
             imgs = Variable(imgs)
-            z.resize_(batch_size, Zdim, 1, 1).normal_(0, 1)
-            noise.resize_(batch_size, Zdim, 1, 1).normal_(0, 1)
+            z.resize_(batch_size, Zdim).normal_(0, 1)
+            noise.resize_(batch_size, Zdim).normal_(0, 1)
             zv = Variable(z)
             noisev = Variable(noise)
 
@@ -105,6 +164,7 @@ def train():
             z_enc = encoded[:, :Zdim] + encoded[:, Zdim:].exp() * noisev # So encoded[:, Zdim] is log(sigma)
             dx_true = Dx(imgs)
             dx_fake = Dx(imgs_fake)
+
             d_true = Dxz(torch.cat((dx_true, z_enc), dim=1))
             d_fake = Dxz(torch.cat((dx_fake, zv), dim=1))
 
@@ -122,14 +182,15 @@ def train():
             loss_g.backward()
             optim_g.step()
 
-            prog_ali(epoch+1, i+1, N, loss_g.data[0], loss_d.data[0], d_true.data.mean(), d_fake.data.mean())
+            prog_print(epoch+1, i+1, N, loss_g.data[0], loss_d.data[0], d_true.data.mean(), d_fake.data.mean())
 
         # generate fake images
-        save_image(Gx(z_pred).data,
-                   os.path.join(IMAGE_PATH,'%d.png' % (epoch+1)),
-                   nrow=9, padding=1,
-                   normalize=False)
+        # save_image(Gx(z_pred).data,
+        #            os.path.join(IMAGE_PATH,'%d.png' % (epoch+1)),
+        #            nrow=9, padding=1,
+        #            normalize=False)
         # save models
+        print("-------> Saving models...")
         torch.save(Gx.state_dict(),
                    os.path.join(MODEL_PATH, 'Gx-%d.pth' % (epoch+1)))
         torch.save(Gz.state_dict(),
@@ -138,7 +199,40 @@ def train():
                    os.path.join(MODEL_PATH, 'Dx-%d.pth'  % (epoch+1)))
         torch.save(Dxz.state_dict(),
                    os.path.join(MODEL_PATH, 'Dxz-%d.pth'  % (epoch+1)))
-        print()
+
+        # evaluate models
+        x_eval = Gx(z_pred)
+        x_eval = x_eval.data.cpu().numpy()
+        for i, (imgs, _) in enumerate(validloader):
+            if cuda:
+                imgs = imgs.cuda()
+            imgs = Variable(imgs)
+            z_eval = Gz(imgs)
+            break
+        # print(len(z_eval.data))
+
+        noise = Variable(torch.FloatTensor(5000, Zdim).normal_(0, 1).cuda())
+        z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].exp() * noise
+        # pk = multivariate_normal.pdf(z_sample.data, mean=np.zeros(16))
+        # #qk = np.repeat(1.0/5000, 5000)
+        # true_normal = np.random.randn(5000, Zdim)
+        # qk = multivariate_normal.pdf(true_normal, mean=np.zeros(16))
+        # true_unif = np.random.rand(5000, Zdim)
+        # fk = multivariate_normal.pdf(true_unif, mean=np.zeros(16))
+        # print("The z entropy is {}".format(entropy(pk)))
+        # print("A refence Normal entropy is {}".format(entropy(qk)))
+        # print("A bad entropy is {}".format(entropy(fk)))
+
+        # Normality test
+        from scipy.stats import normaltest, shapiro
+        #print("The normal test p-value is: {}".format(normaltest(z_sample.data)))
+        print("The shapiro test p-value is: {}".format(shapiro(z_sample.data)))
+
+        x_mean = np.dot(z_pred.data.cpu().numpy(), trans_mtx)
+        diff = np.subtract(x_eval, x_mean) ** 2
+
+        l2 = np.mean(np.sqrt(np.sum(diff, axis=1)))
+        print("The x reconstruction is {}\n".format(l2))
 
 
 if __name__ == '__main__':
