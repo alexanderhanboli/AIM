@@ -213,8 +213,16 @@ def train():
             break
         # print(len(z_eval.data))
 
-        pk = multivariate_normal.pdf(z_eval.data[:, :Zdim], mean=np.zeros(16))
+        noise = Variable(torch.FloatTensor(5000, Zdim).normal_(0, 1).cuda())
+        z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].exp() * noise
+        pk = multivariate_normal.pdf(z_sample.data, mean=np.zeros(16))
+        true_normal = np.random.randn(5000, Zdim)
+        qk = multivariate_normal.pdf(true_normal, mean=np.zeros(16))
+        true_unif = np.random.rand(5000, Zdim)
+        fk = multivariate_normal.pdf(true_unif, mean=np.zeros(16))
         print("The z entropy is {}".format(entropy(pk)))
+        print("A refence Normal entropy is {}".format(entropy(qk)))
+        print("A bad entropy is {}".format(entropy(fk)))
 
         x_mean = np.dot(z_pred.data.cpu().numpy(), trans_mtx)
         diff = np.subtract(x_eval, x_mean) ** 2

@@ -185,7 +185,11 @@ def train():
         pk = multivariate_normal.pdf(z_sample.data, mean=np.zeros(16))
         true_normal = np.random.randn(5000, Zdim)
         qk = multivariate_normal.pdf(true_normal, mean=np.zeros(16))
-        print("The z entropy is {}".format(entropy(pk, qk)))
+        true_unif = np.random.rand(5000, Zdim)
+        fk = multivariate_normal.pdf(true_unif, mean=np.zeros(16))
+        print("The z entropy is {}".format(entropy(pk)))
+        print("A refence Normal entropy is {}".format(entropy(qk)))
+        print("A bad entropy is {}".format(entropy(fk)))
 
         x_mean = np.dot(z_pred.data.cpu().numpy(), trans_mtx)
         diff = np.subtract(x_eval, x_mean) ** 2

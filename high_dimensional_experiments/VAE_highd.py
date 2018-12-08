@@ -41,12 +41,12 @@ class GeneratorZ(nn.Module):
             #nn.BatchNorm1d(zd*8),
             #nn.LeakyReLU(0.02),
 
-            nn.Dropout(0.2),
+            #nn.Dropout(0.2),
             nn.Linear(zd*8, 4*zd),
             #nn.BatchNorm1d(zd*4),
             #nn.LeakyReLU(0.02),
 
-            nn.Dropout(0.2),
+            #nn.Dropout(0.2),
             nn.Linear(4*zd, zd*4),
             #nn.BatchNorm1d(zd*4),
             #nn.LeakyReLU(0.02),
