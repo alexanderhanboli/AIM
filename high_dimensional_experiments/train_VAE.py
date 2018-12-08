@@ -139,14 +139,14 @@ def train():
 
             # forward
             encoded = Gz(imgs)
-            z_mu, z_sigma = encoded[:, :Zdim], encoded[:, Zdim:]
-            z_enc = z_mu + z_sigma.exp() * noisev
+            z_mu, logvar = encoded[:, :Zdim], encoded[:, Zdim:]
+            z_enc = z_mu + logvar.mul(0.5).exp() * noisev
             # So encoded[:, Zdim] is log(sigma)
             imgs_fake = Gx(z_enc)
 
             # compute loss
             loss_g = mse(imgs_fake, imgs)
-            loss_e = -0.5 * torch.sum(1 + z_sigma - z_mu.pow(2) - z_sigma.exp())
+            loss_e = -0.5 * torch.sum(1 + logvar - z_mu.pow(2) - logvar.exp())
             loss_ge = loss_g + loss_e
 
             # backward & update params
@@ -181,7 +181,7 @@ def train():
         # print(len(z_eval.data))
 
         noise = Variable(torch.FloatTensor(5000, Zdim).normal_(0, 1).cuda())
-        z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].exp() * noise
+        z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].mul(0.5).exp() * noise
         # pk = multivariate_normal.pdf(z_sample.data, mean=np.zeros(16))
         # #qk = np.repeat(1.0/5000, 5000)
         # true_normal = np.random.randn(5000, Zdim)

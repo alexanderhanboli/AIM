@@ -102,6 +102,7 @@ def prog_print(e,b,b_total,loss_g,loss_d,loss_e):
 
 def train():
     # load models
+    Fe = Feature()
     Gx = GeneratorX()
     Gz = GeneratorZ()
     Dx = DiscriminatorX()
@@ -130,6 +131,7 @@ def train():
     noise = torch.FloatTensor(BS, Zdim).normal_(0, 1)
 
     if cuda:
+        Fe.cuda()
         Gx.cuda()
         Gz.cuda()
         Dx.cuda()
@@ -139,7 +141,7 @@ def train():
     # optimizer
     optim_g = optim.Adam(chain(Gx.parameters(),Gz.parameters()),
                          lr=opt.lr_g, betas=(.5, .999), weight_decay=opt.decay)
-    optim_d = optim.Adam(chain(Dx.parameters()),
+    optim_d = optim.Adam(chain(Dx.parameters(),Fe.parameters()),
                          lr=opt.lr_d, betas=(.5, .999), weight_decay=opt.decay)
 
     # train
@@ -158,12 +160,12 @@ def train():
 
             # forward
             imgs_fake = Gx(zv)
-            encoded = Gz(imgs_fake)
+            encoded = Gz(Fe(imgs_fake))
             # reparametrization trick
             z_enc = encoded[:, :Zdim] + encoded[:, Zdim:].exp() * noisev # So encoded[:, Zdim] is log(sigma)
             z_mu, z_sigma = encoded[:, :Zdim], encoded[:, Zdim:]
-            d_true = Dx(imgs)
-            d_fake = Dx(imgs_fake)
+            d_true = Dx(Fe(imgs))
+            d_fake = Dx(Fe(imgs_fake))
 
             # compute loss
             loss_d = torch.mean(softplus(-d_true) + softplus(d_fake))
@@ -173,6 +175,7 @@ def train():
 
             # backward & update params
             Dx.zero_grad()
+            Fe.zero_grad()
             loss_d.backward(retain_graph=True)
             optim_d.step()
             Gx.zero_grad()
@@ -189,6 +192,8 @@ def train():
         #            normalize=False)
         # save models
         print("-------> Saving models...")
+        torch.save(Fe.state_dict(),
+                   os.path.join(MODEL_PATH, 'Fe-%d.pth' % (epoch+1)))
         torch.save(Gx.state_dict(),
                    os.path.join(MODEL_PATH, 'Gx-%d.pth' % (epoch+1)))
         torch.save(Gz.state_dict(),
@@ -203,12 +208,12 @@ def train():
             if cuda:
                 imgs = imgs.cuda()
             imgs = Variable(imgs)
-            z_eval = Gz(imgs)
+            z_eval = Gz(Fe(imgs))
             break
         # print(len(z_eval.data))
 
         noise = Variable(torch.FloatTensor(5000, Zdim).normal_(0, 1).cuda())
-        z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].exp() * noise
+        z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].mul(0.5).exp() * noise
         # pk = multivariate_normal.pdf(z_sample.data, mean=np.zeros(16))
         # #qk = np.repeat(1.0/5000, 5000)
         # true_normal = np.random.randn(5000, Zdim)

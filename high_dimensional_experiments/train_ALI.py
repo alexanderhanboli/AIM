@@ -161,7 +161,7 @@ def train():
             imgs_fake = Gx(zv)
             encoded = Gz(imgs)
             # reparametrization trick
-            z_enc = encoded[:, :Zdim] + encoded[:, Zdim:].exp() * noisev # So encoded[:, Zdim] is log(sigma)
+            z_enc = encoded[:, :Zdim] + encoded[:, Zdim:].mul(0.5).exp() * noisev # So encoded[:, Zdim] is log(sigma)
             dx_true = Dx(imgs)
             dx_fake = Dx(imgs_fake)
 
@@ -212,7 +212,7 @@ def train():
         # print(len(z_eval.data))
 
         noise = Variable(torch.FloatTensor(5000, Zdim).normal_(0, 1).cuda())
-        z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].exp() * noise
+        z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].mul(0.5).exp() * noise
         # pk = multivariate_normal.pdf(z_sample.data, mean=np.zeros(16))
         # #qk = np.repeat(1.0/5000, 5000)
         # true_normal = np.random.randn(5000, Zdim)
