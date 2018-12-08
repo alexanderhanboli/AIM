@@ -163,14 +163,14 @@ def train():
             encoded = Gz(Fe(imgs_fake))
             # reparametrization trick
             z_enc = encoded[:, :Zdim] + encoded[:, Zdim:].exp() * noisev # So encoded[:, Zdim] is log(sigma)
-            z_mu, z_sigma = encoded[:, :Zdim], encoded[:, Zdim:]
+            z_mu, logvar = encoded[:, :Zdim], encoded[:, Zdim:]
             d_true = Dx(Fe(imgs))
             d_fake = Dx(Fe(imgs_fake))
 
             # compute loss
             loss_d = torch.mean(softplus(-d_true) + softplus(d_fake))
             loss_g = torch.mean(softplus(-d_fake))
-            loss_e = torch.mean(torch.mean(0.5 * (zv - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.5 * np.log(2*np.pi), 1))
+            loss_e = torch.mean(torch.mean(0.5 * (zv - z_mu) ** 2 * torch.exp(-logvar) + 0.5 * logvar + 0.5 * np.log(2*np.pi), 1))
             loss_ge = loss_g + loss_e
 
             # backward & update params
