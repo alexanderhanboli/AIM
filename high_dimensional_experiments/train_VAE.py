@@ -63,6 +63,7 @@ BS = opt.batch_size
 Zdim = opt.zdim
 IMAGE_PATH = 'VAE_images'
 MODEL_PATH = 'VAE_models'
+TEST = 5000
 
 # ===============
 import torch
@@ -102,7 +103,7 @@ def train():
                             pin_memory= True,
                             shuffle=True)
     validloader = DataLoader(dataset=valid_dataset,
-                            batch_size=3000,
+                            batch_size=TEST,
                             pin_memory=True,
                             shuffle=True)
 
@@ -110,7 +111,7 @@ def train():
     # print(N)
 
     z = torch.FloatTensor(BS, Zdim).normal_(0, 1)
-    z_pred = torch.FloatTensor(3000, Zdim).normal_(0, 1)
+    z_pred = torch.FloatTensor(TEST, Zdim).normal_(0, 1)
     z_pred = Variable(z_pred)
     noise = torch.FloatTensor(BS, Zdim).normal_(0, 1)
 
@@ -182,30 +183,25 @@ def train():
             break
         # print(len(z_eval.data))
 
-        noise = Variable(torch.FloatTensor(3000, Zdim).normal_(0, 1).cuda())
+        from numpy.random import multivariate_normal, randn
+        noise = Variable(torch.FloatTensor(TEST, Zdim).normal_(0, 1).cuda())
         z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].mul(0.5).exp() * noise
         z_sample = z_sample.cpu().data.numpy()
 
-        normal_z_sample = np.random.randn(3000, Zdim)
-        # pk = multivariate_normal.pdf(z_sample.data, mean=np.zeros(16))
-        # #qk = np.repeat(1.0/3000, 3000)
-        # true_normal = np.random.randn(3000, Zdim)
-        # qk = multivariate_normal.pdf(true_normal, mean=np.zeros(16))
-        # true_unif = np.random.rand(3000, Zdim)
-        # fk = multivariate_normal.pdf(true_unif, mean=np.zeros(16))
-        # print("The z entropy is {}".format(entropy(pk)))
-        # print("A refence Normal entropy is {}".format(entropy(qk)))
-        # print("A bad entropy is {}".format(entropy(fk)))
+        x_mean = np.zeros(256)
+        x_cov = np.identity(256) + trans_mtx.T.dot(trans_mtx)
+        normal_z_sample = randn(TEST, Zdim)
+        normal_x_sample = multivariate_normal(x_mean, x_cov, TEST)
 
         # Normality test
         from scipy.stats import normaltest, shapiro
         co = ite.cost.BDKL_KnnK()
         #print("The normal test p-value is: {}".format(normaltest(z_sample.data)))
         print("The shapiro test p-value for z is: {}".format(shapiro(z_sample.data)))
+        print("The shapiro test p-value for X is: {}".format(shapiro(x_eval)))
 
         print("The KL-divergence for z is: {}".format(co.estimation(z_sample, normal_z_sample)))
-
-        print("The shapiro test p-value for X is: {}".format(shapiro(x_eval)))
+        print("The KL-divergence for X is: {}".format(co.estimation(x_eval, normal_x_sample)))
 
         x_mean = np.dot(z_pred.data.cpu().numpy(), trans_mtx)
         diff = np.subtract(x_eval, x_mean) ** 2
@@ -213,11 +209,6 @@ def train():
         l2 = np.mean(np.sqrt(np.sum(diff, axis=1)))
         print("The x reconstruction is {}\n".format(l2))
 
-        # z_logli = -torch.mean(torch.mean(0.5 * z_eval ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
-        # print("log-likehood of z is {}".format(z_logli.data))
-
-        # x_logli = -torch.mean(torch.mean(0.5 * (x_eval - MEAN) ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
-        # print("log-likehood of x is {}".format(x_logli.data))
 
 if __name__ == '__main__':
     train()
