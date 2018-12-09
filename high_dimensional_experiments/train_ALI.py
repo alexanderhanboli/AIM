@@ -54,6 +54,8 @@ opt = parser.parse_args()
 import os
 import sys
 import numpy as np
+import ite
+
 cuda = 0 if opt.gpu == -1 else 1
 if cuda:
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
@@ -118,14 +120,14 @@ def train():
                             pin_memory= True,
                             shuffle=True)
     validloader = DataLoader(dataset=valid_dataset,
-                            batch_size=5000,
+                            batch_size=3000,
                             pin_memory=True,
                             shuffle=True)
 
     N = len(dataloader)
 
     z = torch.FloatTensor(BS, Zdim).normal_(0, 1)
-    z_pred = torch.FloatTensor(5000, Zdim).normal_(0, 1)
+    z_pred = torch.FloatTensor(3000, Zdim).normal_(0, 1)
     z_pred = Variable(z_pred)
     noise = torch.FloatTensor(BS, Zdim).normal_(0, 1)
 
@@ -211,13 +213,13 @@ def train():
             break
         # print(len(z_eval.data))
 
-        noise = Variable(torch.FloatTensor(5000, Zdim).normal_(0, 1).cuda())
+        noise = Variable(torch.FloatTensor(3000, Zdim).normal_(0, 1).cuda())
         z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].mul(0.5).exp() * noise
         # pk = multivariate_normal.pdf(z_sample.data, mean=np.zeros(16))
-        # #qk = np.repeat(1.0/5000, 5000)
-        # true_normal = np.random.randn(5000, Zdim)
+        # #qk = np.repeat(1.0/3000, 3000)
+        # true_normal = np.random.randn(3000, Zdim)
         # qk = multivariate_normal.pdf(true_normal, mean=np.zeros(16))
-        # true_unif = np.random.rand(5000, Zdim)
+        # true_unif = np.random.rand(3000, Zdim)
         # fk = multivariate_normal.pdf(true_unif, mean=np.zeros(16))
         # print("The z entropy is {}".format(entropy(pk)))
         # print("A refence Normal entropy is {}".format(entropy(qk)))
@@ -225,8 +227,13 @@ def train():
 
         # Normality test
         from scipy.stats import normaltest, shapiro
+        co = ite.cost.BDKL_KnnK()
         #print("The normal test p-value is: {}".format(normaltest(z_sample.data)))
-        print("The shapiro test p-value is: {}".format(shapiro(z_sample.data)))
+        print("The shapiro test p-value for z is: {}".format(shapiro(z_sample.data)))
+
+        print("The KL-divergence for z is: {}".format(co.estimation(z_sample, normal_z_sample)))
+
+        print("The shapiro test p-value for X is: {}".format(shapiro(x_eval)))
 
         x_mean = np.dot(z_pred.data.cpu().numpy(), trans_mtx)
         diff = np.subtract(x_eval, x_mean) ** 2
