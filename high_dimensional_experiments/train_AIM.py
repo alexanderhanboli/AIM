@@ -216,6 +216,9 @@ def train():
 
         noise = Variable(torch.FloatTensor(3000, Zdim).normal_(0, 1).cuda())
         z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].mul(0.5).exp() * noise
+        z_sample = z_sample.cpu().data.numpy()
+
+        normal_z_sample = np.random.randn(3000, Zdim)
         # pk = multivariate_normal.pdf(z_sample.data, mean=np.zeros(16))
         # #qk = np.repeat(1.0/3000, 3000)
         # true_normal = np.random.randn(3000, Zdim)
@@ -241,12 +244,6 @@ def train():
 
         l2 = np.mean(np.sqrt(np.sum(diff, axis=1)))
         print("The x reconstruction is {}\n".format(l2))
-
-        # z_logli = -torch.mean(torch.mean(0.5 * z_eval ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
-        # print("log-likehood of z is {}".format(z_logli.data))
-
-        # x_logli = -torch.mean(torch.mean(0.5 * (x_eval - MEAN) ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
-        # print("log-likehood of x is {}".format(x_logli.data))
 
 if __name__ == '__main__':
     train()

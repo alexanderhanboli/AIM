@@ -221,6 +221,9 @@ def train():
 
         noise = Variable(torch.FloatTensor(3000, Zdim).normal_(0, 1).cuda())
         z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].mul(0.5).exp() * noise
+        z_sample = z_sample.cpu().data.numpy()
+
+        normal_z_sample = np.random.randn(3000, Zdim)
         # pk = multivariate_normal.pdf(z_sample.data, mean=np.zeros(16))
         # #qk = np.repeat(1.0/3000, 3000)
         # true_normal = np.random.randn(3000, Zdim)
