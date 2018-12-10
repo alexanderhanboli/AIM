@@ -193,19 +193,27 @@ def train():
         z_sample = z_sample.cpu().data.numpy()
 
         x_mean = np.zeros(256)
-        x_cov = 0.02 ** 2 * np.identity(256) + trans_mtx.T.dot(trans_mtx)
+        # x_cov = 0.02 ** 2 * np.identity(256) + trans_mtx.T.dot(trans_mtx)
+        x_cov = trans_mtx.T.dot(trans_mtx)
+
         normal_z_sample = randn(TEST, Zdim)
+        conditional_x_sample = z_pred.cpu().data.numpy().dot(trans_mtx)
         normal_x_sample = multivariate_normal(x_mean, x_cov, TEST)
+        # normal_x_sample_2 = multivariate_normal(x_mean, x_cov, TEST)
 
         # Normality test
         from scipy.stats import normaltest, shapiro
         co = ite.cost.BDKL_KnnKiTi()
+        co_easy = ite.cost.BDKL_KnnK()
         #print("The normal test p-value is: {}".format(normaltest(z_sample.data)))
         print("The shapiro test p-value for z is: {}".format(shapiro(z_sample.data)))
         print("The shapiro test p-value for X is: {}".format(shapiro(x_eval)))
 
         print("The KL-divergence for z is: {}".format(co.estimation(z_sample, normal_z_sample)))
-        print("The KL-divergence for X is: {}".format(co.estimation(x_eval, normal_x_sample)))
+        print("The KL-divergence for X marginal is: {}".format(co.estimation(x_eval, normal_x_sample)))
+        print("The KL-divergence for X conditional is: {}".format(co.estimation(x_eval, conditional_x_sample)))
+
+        #print("The KL-divergence for control is: {}".format(co.estimation(normal_x_sample_2, normal_x_sample)))
 
         x_mean = np.dot(z_pred.data.cpu().numpy(), trans_mtx)
         diff = np.subtract(x_eval, x_mean) ** 2

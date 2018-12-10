@@ -60,9 +60,17 @@ PRIORS = None
 #
 # MEANS = list(centriod_dict.values())
 
-trans_mtx = np.random.randn(16, 256)
-MEANS = np.random.randn(5000, 16).dot(trans_mtx)
-VARIANCES = [0.02 ** 2 * np.eye(len(mean)) for mean in MEANS]
+if os.path.exists('mtx'):
+    print("Loading...")
+    with open('mtx', 'rb') as f:
+        MTX = pickle.load(f)
+else:
+    MTX = np.random.randn(16, 256)
+    print("Saving...")
+    with open('mtx', 'wb+') as f:
+        pickle.dump(MTX, f)
+MEANS = [np.zeros(16)]
+VARIANCES = [1.0 ** 2 * np.eye(len(mean)) for mean in MEANS]
 
 
 
@@ -90,7 +98,8 @@ class GaussianMixture():
         self.priors = gaussian_mixture.priors
 
         features, labels = gaussian_mixture.sample(nsamples=num_examples)
-        densities = gaussian_mixture.pdf(x=features)
+        # densities = gaussian_mixture.pdf(x=features)
+        densities = None
 
         self.data = {
             'features': features,
@@ -206,13 +215,12 @@ class Gaussian_Data(Dataset):
         return self.x[idx], self.y[idx]
 
 def main():
+    # print(MTX[0])
     try:
         with open('gaussian_train_data', 'rb') as f:
             train_data = pickle.load(f)
         with open('gaussian_valid_data', 'rb') as f:
             valid_data = pickle.load(f)
-        with open('trans_mtx', 'rb') as f:
-            trans_mtx = pickle.load(f)
     except:
         print("Generating data...")
         data = create_gaussian_mixture_data(
@@ -222,13 +230,22 @@ def main():
         train_data = data[0].get_data()
         valid_data = data[1].get_data()
 
+        train_list = []
+        valid_list = []
+        for i, t in enumerate(train_data['features']):
+            train_list.append(t.dot(MTX))
+        for i, v in enumerate(valid_data['features']):
+            valid_list.append(v.dot(MTX))
+
+        train_data['features'] = np.array(train_list)
+        valid_data['features'] = np.array(valid_list)
+
         print("Saving training data...")
-        with open('gaussian_train_data', 'wb') as f:
+        with open('gaussian_train_data', 'wb+') as f:
             pickle.dump(train_data, f)
+
         print("Saving testing data...")
-        with open('gaussian_valid_data', 'wb') as f:
+        with open('gaussian_valid_data', 'wb+') as f:
             pickle.dump(valid_data, f)
-        print("Saving matrix data...")
-        with open('trans_mtx', 'wb') as f:
-            pickle.dump(trans_mtx, f)
-    return train_data, valid_data, trans_mtx
+
+    return train_data, valid_data, MTX
