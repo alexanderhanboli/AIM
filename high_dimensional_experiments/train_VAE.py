@@ -36,14 +36,14 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-g', '--gpu', type=str, default='-1', metavar='GPU',
                     help='set GPU id (default: -1)')
-parser.add_argument('-b', '--batch-size', type=int, default=32, metavar='N',
-                    help='input batch size for training (default: 32)')
+parser.add_argument('-b', '--batch-size', type=int, default=128, metavar='N',
+                    help='input batch size for training (default: 128)')
 parser.add_argument('-e', '--epochs', type=int, default=100, metavar='E',
                     help='how many epochs to train (default: 100)')
-parser.add_argument('--lr-g', type=float, default=1e-5, metavar='LR',
-                    help='initial ADAM learning rate of G (default: 1e-5)')
-parser.add_argument('--lr-d', type=float, default=1e-5, metavar='LR',
-                    help='initial ADAM learning rate of D (default: 1e-5)')
+parser.add_argument('--lr-g', type=float, default=1e-3, metavar='LR',
+                    help='initial ADAM learning rate of G (default: 1e-3)')
+parser.add_argument('--lr-d', type=float, default=1e-3, metavar='LR',
+                    help='initial ADAM learning rate of D (default: 1e-3)')
 parser.add_argument('--decay', type=float, default=0, metavar='D',
                     help='weight decay or L2 penalty (default: 0)')
 parser.add_argument('-z', '--zdim', type=int, default=16, metavar='Z',
@@ -128,7 +128,7 @@ def train():
     # train
     # ==========================
     softplus = nn.Softplus()
-    mse = nn.MSELoss()
+    mse = nn.MSELoss(size_average=False, reduce=True)
     for epoch in range(opt.epochs):
         Gx.train()
         Gz.train()
@@ -150,8 +150,8 @@ def train():
             imgs_fake = Gx(z_enc)
 
             # compute loss
-            loss_g = mse(imgs_fake, imgs)
-            loss_e = -0.5 * torch.sum(1 + logvar - z_mu.pow(2) - logvar.exp())
+            loss_g = torch.mean(torch.sum((imgs_fake - imgs) ** 2, 1))
+            loss_e = -0.5 * torch.mean(torch.sum(1 + logvar - z_mu.pow(2) - logvar.exp(), 1))
             loss_ge = loss_g + loss_e
 
             # backward & update params
@@ -199,12 +199,18 @@ def train():
         normal_z_sample = randn(TEST, Zdim)
         conditional_x_sample = z_pred.cpu().data.numpy().dot(trans_mtx)
         normal_x_sample = multivariate_normal(x_mean, x_cov, TEST)
-        # normal_x_sample_2 = multivariate_normal(x_mean, x_cov, TEST)
+
+        print(np.max(normal_x_sample))
+        # normal_x_sample = randn(TEST, 256)
 
         # Normality test
         from scipy.stats import normaltest, shapiro
         co = ite.cost.BDKL_KnnKiTi()
         co_easy = ite.cost.BDKL_KnnK()
+
+        print("Our mean is {}, and var is {}".format(np.mean(x_eval[:,0]), np.var(x_eval[:,0])))
+        print("True mean is {}, and var is {}".format(np.mean(normal_x_sample[:,0]), np.var(normal_x_sample[:,0])))
+
         #print("The normal test p-value is: {}".format(normaltest(z_sample.data)))
         print("The shapiro test p-value for z is: {}".format(shapiro(z_sample.data)))
         print("The shapiro test p-value for X is: {}".format(shapiro(x_eval)))
@@ -212,14 +218,15 @@ def train():
         print("The KL-divergence for z is: {}".format(co.estimation(z_sample, normal_z_sample)))
         print("The KL-divergence for X marginal is: {}".format(co.estimation(x_eval, normal_x_sample)))
         print("The KL-divergence for X conditional is: {}".format(co.estimation(x_eval, conditional_x_sample)))
+        # print("The KL-divergence between two X is {}".format(co.estimation(normal_x_sample, conditional_x_sample)))
 
         #print("The KL-divergence for control is: {}".format(co.estimation(normal_x_sample_2, normal_x_sample)))
 
-        x_mean = np.dot(z_pred.data.cpu().numpy(), trans_mtx)
-        diff = np.subtract(x_eval, x_mean) ** 2
-
-        l2 = np.mean(np.sqrt(np.sum(diff, axis=1)))
-        print("The x reconstruction is {}\n".format(l2))
+        # x_mean = np.dot(z_pred.data.cpu().numpy(), trans_mtx)
+        # diff = np.subtract(x_eval, x_mean) ** 2
+        #
+        # l2 = np.mean(np.sqrt(np.sum(diff, axis=1)))
+        # print("The x reconstruction is {}\n".format(l2))
 
 
 if __name__ == '__main__':

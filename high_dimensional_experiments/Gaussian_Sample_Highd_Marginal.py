@@ -65,14 +65,14 @@ if os.path.exists('mtx'):
     with open('mtx', 'rb') as f:
         MTX = pickle.load(f)
 else:
-    MTX = np.random.rand(16, 256) * 0.05
+    MTX = np.random.randn(16, 256) * 0.05
     print("Saving...")
     with open('mtx', 'wb+') as f:
         pickle.dump(MTX, f)
-MEANS = [np.zeros(16)]
-VARIANCES = [1.0 ** 2 * np.eye(len(mean)) for mean in MEANS]
-# MEANS = [np.zeros(256)]
+# MEANS = [np.zeros(16)]
 # VARIANCES = [1.0 ** 2 * np.eye(len(mean)) for mean in MEANS]
+MEANS = [np.zeros(256)]
+VARIANCES = [1.0 ** 2 * np.eye(len(mean)) for mean in MEANS]
 
 
 class GaussianMixture():
@@ -231,15 +231,15 @@ def main():
         train_data = data[0].get_data()
         valid_data = data[1].get_data()
 
-        train_list = []
-        valid_list = []
-        for i, t in enumerate(train_data['features']):
-            train_list.append(t.dot(MTX))
-        for i, v in enumerate(valid_data['features']):
-            valid_list.append(v.dot(MTX))
-
-        train_data['features'] = np.array(train_list)
-        valid_data['features'] = np.array(valid_list)
+        # train_list = []
+        # valid_list = []
+        # for i, t in enumerate(train_data['features']):
+        #     train_list.append(t.dot(MTX))
+        # for i, v in enumerate(valid_data['features']):
+        #     valid_list.append(v.dot(MTX))
+        #
+        # train_data['features'] = np.array(train_list)
+        # valid_data['features'] = np.array(valid_list)
 
         print("Saving training data...")
         with open('gaussian_train_data', 'wb+') as f:

@@ -28,7 +28,7 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
-import Gaussian_Sample_HighD as GS
+import Gaussian_Sample_HighD_Marginal as GS
 
 from scipy.stats import multivariate_normal, entropy
 
@@ -40,10 +40,10 @@ parser.add_argument('-b', '--batch-size', type=int, default=128, metavar='N',
                     help='input batch size for training (default: 128)')
 parser.add_argument('-e', '--epochs', type=int, default=100, metavar='E',
                     help='how many epochs to train (default: 100)')
-parser.add_argument('--lr-g', type=float, default=1e-3, metavar='LR',
-                    help='initial ADAM learning rate of G (default: 1e-3)')
-parser.add_argument('--lr-d', type=float, default=1e-3, metavar='LR',
-                    help='initial ADAM learning rate of D (default: 1e-3)')
+parser.add_argument('--lr-g', type=float, default=1e-4, metavar='LR',
+                    help='initial ADAM learning rate of G (default: 1e-4)')
+parser.add_argument('--lr-d', type=float, default=1e-4, metavar='LR',
+                    help='initial ADAM learning rate of D (default: 1e-4)')
 parser.add_argument('--decay', type=float, default=0, metavar='D',
                     help='weight decay or L2 penalty (default: 0)')
 parser.add_argument('-z', '--zdim', type=int, default=16, metavar='Z',
@@ -61,8 +61,8 @@ if cuda:
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
 BS = opt.batch_size
 Zdim = opt.zdim
-IMAGE_PATH = 'AIM_images'
-MODEL_PATH = 'AIM_models'
+IMAGE_PATH = 'VAE_images'
+MODEL_PATH = 'VAE_models'
 TEST = 5000
 
 # ===============
@@ -74,7 +74,7 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 from itertools import chain
 from torchvision.utils import save_image
-from AIM_highd import *
+from VAE_highd import *
 
 if not os.path.exists(IMAGE_PATH):
     print('mkdir ', IMAGE_PATH)
@@ -83,32 +83,14 @@ if not os.path.exists(MODEL_PATH):
     print('mkdir ', MODEL_PATH)
     os.mkdir(MODEL_PATH)
 
-#TODO
-# MODES = 1
-# centriod_dict = {}
-# with open("./mnist_mean.txt") as f:
-#     lines = f.readlines()
-# for i, (label, centriod) in enumerate(zip(lines[0::2], lines[1::2])):
-#     if i >= MODES:
-#         break
-#     centriod_dict[int(label.strip())] = list([float(x) for x in centriod.strip().split(' ')])
-#
-# MEANS = np.array(list(centriod_dict.values()))
-# MEAN = torch.from_numpy(MEANS[0]).view(1,500).float()
-# MEAN = Variable(MEAN.cuda())
-# print(MEAN.shape)
-# print(type(MEAN))
-
-def prog_print(e,b,b_total,loss_g,loss_d,loss_e):
-    sys.stdout.write("\r%3d: [%5d / %5d] G: %.4f D: %.4f E: %.4f" % (e,b,b_total,loss_g,loss_d,loss_e))
+def prog_print(e,b,b_total,loss_g,loss_e):
+    sys.stdout.write("\r%3d: [%5d / %5d] G: %.4f E: %.4f" % (e,b,b_total,loss_g,loss_e))
     sys.stdout.flush()
 
 def train():
     # load models
-    Fe = Feature()
     Gx = GeneratorX()
     Gz = GeneratorZ()
-    Dx = DiscriminatorX()
 
     # load dataset
     # ==========================
@@ -134,23 +116,22 @@ def train():
     noise = torch.FloatTensor(BS, Zdim).normal_(0, 1)
 
     if cuda:
-        Fe.cuda()
         Gx.cuda()
         Gz.cuda()
-        Dx.cuda()
         z, z_pred, noise = z.cuda(), z_pred.cuda(), noise.cuda()
 
 
     # optimizer
     optim_g = optim.Adam(chain(Gx.parameters(),Gz.parameters()),
                          lr=opt.lr_g, betas=(.5, .999), weight_decay=opt.decay)
-    optim_d = optim.Adam(chain(Dx.parameters(),Fe.parameters()),
-                         lr=opt.lr_d, betas=(.5, .999), weight_decay=opt.decay)
 
     # train
     # ==========================
     softplus = nn.Softplus()
+    mse = nn.MSELoss(size_average=False, reduce=True)
     for epoch in range(opt.epochs):
+        Gx.train()
+        Gz.train()
         for i, (imgs, _) in enumerate(dataloader):
             batch_size = imgs.size(0)
             if cuda:
@@ -162,31 +143,24 @@ def train():
             noisev = Variable(noise)
 
             # forward
-            imgs_fake = Gx(zv)
-            encoded = Gz(Fe(imgs_fake))
-            # reparametrization trick
-            z_enc = encoded[:, :Zdim] + encoded[:, Zdim:].exp() * noisev # So encoded[:, Zdim] is log(sigma)
+            encoded = Gz(imgs)
             z_mu, logvar = encoded[:, :Zdim], encoded[:, Zdim:]
-            d_true = Dx(Fe(imgs))
-            d_fake = Dx(Fe(imgs_fake))
+            z_enc = z_mu + logvar.mul(0.5).exp() * noisev
+            # So encoded[:, Zdim] is log(sigma)
+            imgs_fake = Gx(z_enc)
 
             # compute loss
-            loss_d = torch.mean(softplus(-d_true) + softplus(d_fake))
-            loss_g = torch.mean(softplus(-d_fake))
-            loss_e = torch.mean(torch.mean(0.5 * (zv - z_mu) ** 2 * torch.exp(-logvar) + 0.5 * logvar + 0.5 * np.log(2*np.pi), 1))
+            loss_g = torch.mean(torch.sum((imgs_fake - imgs) ** 2, 1))
+            loss_e = -0.5 * torch.mean(torch.sum(1 + logvar - z_mu.pow(2) - logvar.exp(), 1))
             loss_ge = loss_g + loss_e
 
             # backward & update params
-            Dx.zero_grad()
-            Fe.zero_grad()
-            loss_d.backward(retain_graph=True)
-            optim_d.step()
             Gx.zero_grad()
             Gz.zero_grad()
             loss_ge.backward()
             optim_g.step()
 
-            prog_print(epoch+1, i+1, N, loss_g.data[0], loss_d.data[0], loss_e.data[0])
+            prog_print(epoch+1, i+1, N, loss_g.data[0], loss_e.data[0])
 
         # generate fake images
         # save_image(Gx(z_pred).data,
@@ -195,23 +169,21 @@ def train():
         #            normalize=False)
         # save models
         print("-------> Saving models...")
-        torch.save(Fe.state_dict(),
-                   os.path.join(MODEL_PATH, 'Fe-%d.pth' % (epoch+1)))
         torch.save(Gx.state_dict(),
                    os.path.join(MODEL_PATH, 'Gx-%d.pth' % (epoch+1)))
         torch.save(Gz.state_dict(),
                    os.path.join(MODEL_PATH, 'Gz-%d.pth' % (epoch+1)))
-        torch.save(Dx.state_dict(),
-                   os.path.join(MODEL_PATH, 'Dx-%d.pth'  % (epoch+1)))
 
         # evaluate models
+        Gx.eval()
+        Gz.eval()
         x_eval = Gx(z_pred)
         x_eval = x_eval.data.cpu().numpy()
         for i, (imgs, _) in enumerate(validloader):
             if cuda:
                 imgs = imgs.cuda()
             imgs = Variable(imgs)
-            z_eval = Gz(Fe(imgs))
+            z_eval = Gz(imgs)
             break
         # print(len(z_eval.data))
 
@@ -220,23 +192,16 @@ def train():
         z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].mul(0.5).exp() * noise
         z_sample = z_sample.cpu().data.numpy()
 
-        x_mean = np.zeros(256)
-        # x_cov = 0.02 ** 2 * np.identity(256) + trans_mtx.T.dot(trans_mtx)
-        x_cov = trans_mtx.T.dot(trans_mtx)
-
         normal_z_sample = randn(TEST, Zdim)
-        conditional_x_sample = z_pred.cpu().data.numpy().dot(trans_mtx)
-        normal_x_sample = multivariate_normal(x_mean, x_cov, TEST)
-
-        # normal_x_sample = randn(TEST, 256)
+        normal_x_sample = randn(TEST, 256)
 
         # Normality test
         from scipy.stats import normaltest, shapiro
         co = ite.cost.BDKL_KnnKiTi()
-        co_easy = ite.cost.BDKL_KnnK()
+        # co_easy = ite.cost.BDKL_KnnK()
 
-        print("Our mean is {}, and var is {}".format(np.mean(x_eval[:,0]), np.var(x_eval[:,0])))
-        print("True mean is {}, and var is {}".format(np.mean(normal_x_sample[:,0]), np.var(normal_x_sample[:,0])))
+        print(x_eval[0])
+        print(normal_x_sample[0])
 
         #print("The normal test p-value is: {}".format(normaltest(z_sample.data)))
         print("The shapiro test p-value for z is: {}".format(shapiro(z_sample.data)))
@@ -244,8 +209,16 @@ def train():
 
         print("The KL-divergence for z is: {}".format(co.estimation(z_sample, normal_z_sample)))
         print("The KL-divergence for X marginal is: {}".format(co.estimation(x_eval, normal_x_sample)))
-        print("The KL-divergence for X conditional is: {}".format(co.estimation(x_eval, conditional_x_sample)))
+        # print("The KL-divergence for X conditional is: {}".format(co.estimation(x_eval, conditional_x_sample)))
         # print("The KL-divergence between two X is {}".format(co.estimation(normal_x_sample, conditional_x_sample)))
+
+        #print("The KL-divergence for control is: {}".format(co.estimation(normal_x_sample_2, normal_x_sample)))
+
+        # x_mean = np.dot(z_pred.data.cpu().numpy(), trans_mtx)
+        # diff = np.subtract(x_eval, x_mean) ** 2
+        #
+        # l2 = np.mean(np.sqrt(np.sum(diff, axis=1)))
+        # print("The x reconstruction is {}\n".format(l2))
 
 
 if __name__ == '__main__':
