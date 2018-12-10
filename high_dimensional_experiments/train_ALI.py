@@ -220,13 +220,13 @@ def train():
         z_sample = z_sample.cpu().data.numpy()
 
         x_mean = np.zeros(256)
-        x_cov = np.identity(256) + trans_mtx.T.dot(trans_mtx)
+        x_cov = 0.02 ** 2 * np.identity(256) + trans_mtx.T.dot(trans_mtx)
         normal_z_sample = randn(TEST, Zdim)
         normal_x_sample = multivariate_normal(x_mean, x_cov, TEST)
 
         # Normality test
         from scipy.stats import normaltest, shapiro
-        co = ite.cost.BDKL_KnnK()
+        co = ite.cost.BDKL_KnnKiTi()
         #print("The normal test p-value is: {}".format(normaltest(z_sample.data)))
         print("The shapiro test p-value for z is: {}".format(shapiro(z_sample.data)))
         print("The shapiro test p-value for X is: {}".format(shapiro(x_eval)))

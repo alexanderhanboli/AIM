@@ -61,8 +61,8 @@ PRIORS = None
 # MEANS = list(centriod_dict.values())
 
 trans_mtx = np.random.randn(16, 256)
-MEANS = np.random.randn(500, 16).dot(trans_mtx)
-VARIANCES = [0.2 ** 2 * np.eye(len(mean)) for mean in MEANS]
+MEANS = np.random.randn(5000, 16).dot(trans_mtx)
+VARIANCES = [0.02 ** 2 * np.eye(len(mean)) for mean in MEANS]
 
 
 
@@ -211,6 +211,9 @@ def main():
             train_data = pickle.load(f)
         with open('gaussian_valid_data', 'rb') as f:
             valid_data = pickle.load(f)
+        with open('trans_mtx', 'rb') as f:
+            del trans_mtx
+            trans_mtx = pickle.load(f)
     except:
         print("Generating data...")
         data = create_gaussian_mixture_data(
@@ -219,9 +222,13 @@ def main():
 
         train_data = data[0].get_data()
         valid_data = data[1].get_data()
-        print("Saving data...")
+        print("Saving training data...")
         with open('gaussian_train_data', 'wb') as f:
             pickle.dump(train_data, f)
+        print("Saving testing data...")
         with open('gaussian_valid_data', 'wb') as f:
             pickle.dump(valid_data, f)
+        print("Saving matrix data...")
+        with open('trans_mtx', 'wb') as f:
+            pickle.dump(trans_mtx, f)
     return train_data, valid_data, trans_mtx

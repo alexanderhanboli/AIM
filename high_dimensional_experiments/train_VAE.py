@@ -130,6 +130,8 @@ def train():
     softplus = nn.Softplus()
     mse = nn.MSELoss()
     for epoch in range(opt.epochs):
+        Gx.train()
+        Gz.train()
         for i, (imgs, _) in enumerate(dataloader):
             batch_size = imgs.size(0)
             if cuda:
@@ -173,6 +175,8 @@ def train():
                    os.path.join(MODEL_PATH, 'Gz-%d.pth' % (epoch+1)))
 
         # evaluate models
+        Gx.eval()
+        Gz.eval()
         x_eval = Gx(z_pred)
         x_eval = x_eval.data.cpu().numpy()
         for i, (imgs, _) in enumerate(validloader):
@@ -189,13 +193,13 @@ def train():
         z_sample = z_sample.cpu().data.numpy()
 
         x_mean = np.zeros(256)
-        x_cov = np.identity(256) + trans_mtx.T.dot(trans_mtx)
+        x_cov = 0.02 ** 2 * np.identity(256) + trans_mtx.T.dot(trans_mtx)
         normal_z_sample = randn(TEST, Zdim)
         normal_x_sample = multivariate_normal(x_mean, x_cov, TEST)
 
         # Normality test
         from scipy.stats import normaltest, shapiro
-        co = ite.cost.BDKL_KnnK()
+        co = ite.cost.BDKL_KnnKiTi()
         #print("The normal test p-value is: {}".format(normaltest(z_sample.data)))
         print("The shapiro test p-value for z is: {}".format(shapiro(z_sample.data)))
         print("The shapiro test p-value for X is: {}".format(shapiro(x_eval)))
