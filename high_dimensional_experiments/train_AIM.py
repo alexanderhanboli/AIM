@@ -40,9 +40,9 @@ parser.add_argument('-b', '--batch-size', type=int, default=128, metavar='N',
                     help='input batch size for training (default: 128)')
 parser.add_argument('-e', '--epochs', type=int, default=100, metavar='E',
                     help='how many epochs to train (default: 100)')
-parser.add_argument('--lr-g', type=float, default=1e-4, metavar='LR',
+parser.add_argument('--lr-g', type=float, default=1e-5, metavar='LR',
                     help='initial ADAM learning rate of G (default: 1e-4)')
-parser.add_argument('--lr-d', type=float, default=1e-4, metavar='LR',
+parser.add_argument('--lr-d', type=float, default=1e-5, metavar='LR',
                     help='initial ADAM learning rate of D (default: 1e-4)')
 parser.add_argument('--decay', type=float, default=0, metavar='D',
                     help='weight decay or L2 penalty (default: 0)')
