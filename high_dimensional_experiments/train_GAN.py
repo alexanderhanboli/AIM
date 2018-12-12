@@ -61,8 +61,8 @@ if cuda:
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.gpu
 BS = opt.batch_size
 Zdim = opt.zdim
-IMAGE_PATH = 'AIM_images'
-MODEL_PATH = 'AIM_models'
+IMAGE_PATH = 'GAN_images'
+MODEL_PATH = 'GAN_models'
 TEST = 5000
 
 # ===============
@@ -74,7 +74,7 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 from itertools import chain
 from torchvision.utils import save_image
-from AIM_highd import *
+from GAN_highd import *
 
 if not os.path.exists(IMAGE_PATH):
     print('mkdir ', IMAGE_PATH)
@@ -83,31 +83,16 @@ if not os.path.exists(MODEL_PATH):
     print('mkdir ', MODEL_PATH)
     os.mkdir(MODEL_PATH)
 
-#TODO
-# MODES = 1
-# centriod_dict = {}
-# with open("./mnist_mean.txt") as f:
-#     lines = f.readlines()
-# for i, (label, centriod) in enumerate(zip(lines[0::2], lines[1::2])):
-#     if i >= MODES:
-#         break
-#     centriod_dict[int(label.strip())] = list([float(x) for x in centriod.strip().split(' ')])
-#
-# MEANS = np.array(list(centriod_dict.values()))
-# MEAN = torch.from_numpy(MEANS[0]).view(1,500).float()
-# MEAN = Variable(MEAN.cuda())
-# print(MEAN.shape)
-# print(type(MEAN))
 
-def prog_print(e,b,b_total,loss_g,loss_d,loss_e):
-    sys.stdout.write("\r%3d: [%5d / %5d] G: %.4f D: %.4f E: %.4f" % (e,b,b_total,loss_g,loss_d,loss_e))
+
+def prog_print(e,b,b_total,loss_g,loss_d):
+    sys.stdout.write("\r%3d: [%5d / %5d] G: %.4f D: %.4f" %
+                        (e,b,b_total,loss_g,loss_d))
     sys.stdout.flush()
 
 def train():
     # load models
-    Fe = Feature()
     Gx = GeneratorX()
-    Gz = GeneratorZ()
     Dx = DiscriminatorX()
 
     # load dataset
@@ -123,28 +108,24 @@ def train():
     validloader = DataLoader(dataset=valid_dataset,
                             batch_size=TEST,
                             pin_memory=True,
-                            shuffle=True)
+                            shuffle=False)
 
     N = len(dataloader)
     # print(N)
 
     z = torch.FloatTensor(BS, Zdim).normal_(0, 1)
-    z_pred = torch.FloatTensor(TEST, Zdim).normal_(0, 1)
-    z_pred = Variable(z_pred)
-    noise = torch.FloatTensor(BS, Zdim).normal_(0, 1)
+    z_pred = Variable(torch.FloatTensor(TEST, Zdim).normal_(0, 1))
 
     if cuda:
-        Fe.cuda()
         Gx.cuda()
-        Gz.cuda()
         Dx.cuda()
-        z, z_pred, noise = z.cuda(), z_pred.cuda(), noise.cuda()
+        z, z_pred = z.cuda(), z_pred.cuda()
 
 
     # optimizer
-    optim_g = optim.Adam(chain(Gx.parameters(),Gz.parameters()),
+    optim_g = optim.Adam(chain(Gx.parameters()),
                          lr=opt.lr_g, betas=(.5, .999), weight_decay=opt.decay)
-    optim_d = optim.Adam(chain(Dx.parameters(),Fe.parameters()),
+    optim_d = optim.Adam(chain(Dx.parameters()),
                          lr=opt.lr_d, betas=(.5, .999), weight_decay=opt.decay)
 
     # train
@@ -157,37 +138,29 @@ def train():
                 imgs = imgs.cuda()
             imgs = Variable(imgs)
             z.resize_(batch_size, Zdim).normal_(0, 1)
-            noise.resize_(batch_size, Zdim).normal_(0, 1)
             zv = Variable(z)
-            noisev = Variable(noise)
 
             # forward
             imgs_fake = Gx(zv)
-            encoded = Gz(Fe(imgs_fake))
-            # reparametrization trick
-            z_enc = encoded[:, :Zdim] + encoded[:, Zdim:].exp() * noisev # So encoded[:, Zdim] is log(sigma)
-            z_mu, logvar = encoded[:, :Zdim], encoded[:, Zdim:]
-            d_true = Dx(Fe(imgs))
-            d_fake = Dx(Fe(imgs_fake))
+
+            # discriminator
+            d_true = Dx(imgs)
+            d_fake = Dx(imgs_fake)
 
             # compute loss
             loss_d = torch.mean(softplus(-d_true) + softplus(d_fake))
-            loss_g = torch.mean(softplus(-d_fake))
-            loss_e = torch.mean(torch.mean(0.5 * (zv - z_mu) ** 2 * torch.exp(-logvar) + 0.5 * logvar + 0.5 * np.log(2*np.pi), 1))
-            loss_ge = loss_g + 0.1 * loss_e
+            loss_g = torch.mean(softplus(-d_fake) + softplus(d_true))
 
             # backward & update params
             Dx.zero_grad()
-            Fe.zero_grad()
             loss_d.backward(retain_graph=True)
             optim_d.step()
+
             Gx.zero_grad()
-            Gz.zero_grad()
-            loss_ge.backward()
+            loss_g.backward()
             optim_g.step()
 
-            prog_print(epoch+1, i+1, N, loss_g.data.item(),
-                       loss_d.data.item(), loss_e.data.item())
+            prog_print(epoch+1, i+1, N, loss_g.data.item(), loss_d.data.item())
 
         # generate fake images
         # save_image(Gx(z_pred).data,
@@ -196,54 +169,35 @@ def train():
         #            normalize=False)
         # save models
         print("-------> Saving models...")
-        torch.save(Fe.state_dict(),
-                   os.path.join(MODEL_PATH, 'Fe-%d.pth' % (epoch+1)))
         torch.save(Gx.state_dict(),
                    os.path.join(MODEL_PATH, 'Gx-%d.pth' % (epoch+1)))
-        torch.save(Gz.state_dict(),
-                   os.path.join(MODEL_PATH, 'Gz-%d.pth' % (epoch+1)))
         torch.save(Dx.state_dict(),
                    os.path.join(MODEL_PATH, 'Dx-%d.pth'  % (epoch+1)))
 
         # evaluate models
         x_eval = Gx(z_pred)
         x_eval = x_eval.data.cpu().numpy()
-        for i, (imgs, _) in enumerate(validloader):
-            if cuda:
-                imgs = imgs.cuda()
-            imgs = Variable(imgs)
-            z_eval = Gz(Fe(imgs))
-            break
-        # print(len(z_eval.data))
 
         from numpy.random import multivariate_normal, randn
-        noise = Variable(torch.FloatTensor(TEST, Zdim).normal_(0, 1).cuda())
-        z_sample = z_eval[:, :Zdim] + z_eval[:, Zdim:].mul(0.5).exp() * noise
-        z_sample = z_sample.cpu().data.numpy()
-
         x_mean = np.zeros(256)
-        # x_cov = 0.02 ** 2 * np.identity(256) + trans_mtx.T.dot(trans_mtx)
         x_cov = trans_mtx.T.dot(trans_mtx)
 
-        normal_z_sample = randn(TEST, Zdim)
         conditional_x_sample = z_pred.cpu().data.numpy().dot(trans_mtx)
         normal_x_sample = multivariate_normal(x_mean, x_cov, TEST)
-
-        # normal_x_sample = randn(TEST, 256)
 
         # Normality test
         from scipy.stats import normaltest, shapiro
         co = ite.cost.BDKL_KnnKiTi()
-        co_easy = ite.cost.BDKL_KnnK()
+        # co_easy = ite.cost.BDKL_KnnK()
 
-        print("Our mean is {}, and var is {}".format(np.mean(x_eval[:,0]), np.var(x_eval[:,0])))
-        print("True mean is {}, and var is {}".format(np.mean(normal_x_sample[:,0]), np.var(normal_x_sample[:,0])))
+        # print("Our mean is {}, and var is {}".format(np.mean(x_eval[:,0]), np.var(x_eval[:,0])))
+        # print("True mean is {}, and var is {}".format(np.mean(normal_x_sample[:,0]), np.var(normal_x_sample[:,0])))
 
         #print("The normal test p-value is: {}".format(normaltest(z_sample.data)))
-        print("The shapiro test p-value for z is: {}".format(shapiro(z_sample.data)))
+        # print("The shapiro test p-value for z is: {}".format(shapiro(z_sample.data)))
         print("The shapiro test p-value for X is: {}".format(shapiro(x_eval)))
 
-        print("The KL-divergence for z is: {}".format(co.estimation(z_sample, normal_z_sample)))
+        # print("The KL-divergence for z is: {}".format(co.estimation(z_sample, normal_z_sample)))
         print("The KL-divergence for X marginal is: {}".format(co.estimation(x_eval, normal_x_sample)))
         print("The KL-divergence for X conditional is: {}".format(co.estimation(x_eval, conditional_x_sample)))
         # print("The KL-divergence between two X is {}".format(co.estimation(normal_x_sample, conditional_x_sample)))
