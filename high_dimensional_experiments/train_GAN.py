@@ -114,7 +114,8 @@ def train():
     # print(N)
 
     z = torch.FloatTensor(BS, Zdim).normal_(0, 1)
-    z_pred = Variable(torch.FloatTensor(TEST, Zdim).normal_(0, 1))
+    z_pred = torch.FloatTensor(TEST, Zdim).normal_(0, 1)
+    z_pred = Variable(z_pred)
 
     if cuda:
         Gx.cuda()
@@ -149,7 +150,7 @@ def train():
 
             # compute loss
             loss_d = torch.mean(softplus(-d_true) + softplus(d_fake))
-            loss_g = torch.mean(softplus(-d_fake) + softplus(d_true))
+            loss_g = torch.mean(softplus(-d_fake))
 
             # backward & update params
             Dx.zero_grad()

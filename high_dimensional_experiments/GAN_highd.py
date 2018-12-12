@@ -33,19 +33,16 @@ class DiscriminatorX(nn.Module):
         super().__init__()
         self.net = nn.Sequential(
             # nn.Dropout(0.1),
-            nn.Linear(xd, xd//4),
-            nn.LeakyReLU(0.02),
-            nn.BatchNorm1d(xd//4),
+            nn.Linear(xd, zd*8, bias=False),
 
-            nn.Linear(xd//4, xd//8),
+            nn.Linear(zd*8, xd//8, bias=False),
             nn.LeakyReLU(0.02),
-            nn.BatchNorm1d(xd//8),
 
-            nn.Linear(xd//8, xd //16),
+            nn.Linear(xd//8, xd //16, bias=False),
             nn.LeakyReLU(0.02),
-            nn.BatchNorm1d(xd//16),
+            # nn.Dropout(0.1),
 
-            nn.Linear(xd//16, 1),
+            nn.Linear(xd//16, 1)
         )
 
     def forward(self, x):

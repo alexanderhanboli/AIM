@@ -78,7 +78,7 @@ class GeneratorZ(nn.Module):
             # nn.LeakyReLU(0.02),
             #
             # nn.Linear(4*zd, zd*4),
-            nn.Linear(zd*4, zd*2)
+            nn.Linear(zd*4, zd*2),
         )
 
     def forward(self, x):

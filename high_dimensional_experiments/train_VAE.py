@@ -40,10 +40,10 @@ parser.add_argument('-b', '--batch-size', type=int, default=128, metavar='N',
                     help='input batch size for training (default: 128)')
 parser.add_argument('-e', '--epochs', type=int, default=100, metavar='E',
                     help='how many epochs to train (default: 100)')
-parser.add_argument('--lr-g', type=float, default=1e-3, metavar='LR',
-                    help='initial ADAM learning rate of G (default: 1e-3)')
-parser.add_argument('--lr-d', type=float, default=1e-3, metavar='LR',
-                    help='initial ADAM learning rate of D (default: 1e-3)')
+parser.add_argument('--lr-g', type=float, default=1e-4, metavar='LR',
+                    help='initial ADAM learning rate of G (default: 5e-4)')
+parser.add_argument('--lr-d', type=float, default=1e-4, metavar='LR',
+                    help='initial ADAM learning rate of D (default: 5e-4)')
 parser.add_argument('--decay', type=float, default=0, metavar='D',
                     help='weight decay or L2 penalty (default: 0)')
 parser.add_argument('-z', '--zdim', type=int, default=16, metavar='Z',
@@ -128,7 +128,7 @@ def train():
     # train
     # ==========================
     softplus = nn.Softplus()
-    mse = nn.MSELoss(size_average=False, reduce=True)
+    mse = nn.MSELoss()
     for epoch in range(opt.epochs):
         Gx.train()
         Gz.train()
@@ -150,7 +150,8 @@ def train():
             imgs_fake = Gx(z_enc)
 
             # compute loss
-            loss_g = torch.mean(torch.sum((imgs_fake - imgs) ** 2, 1))
+            beta = 100
+            loss_g = beta * torch.mean(torch.sum((imgs_fake - imgs) ** 2, 1))
             loss_e = -0.5 * torch.mean(torch.sum(1 + logvar - z_mu.pow(2) - logvar.exp(), 1))
             loss_ge = loss_g + loss_e
 
@@ -160,7 +161,7 @@ def train():
             loss_ge.backward()
             optim_g.step()
 
-            prog_print(epoch+1, i+1, N, loss_g.data[0], loss_e.data[0])
+            prog_print(epoch+1, i+1, N, loss_g.data.item(), loss_e.data.item())
 
         # generate fake images
         # save_image(Gx(z_pred).data,
@@ -195,6 +196,7 @@ def train():
         x_mean = np.zeros(256)
         # x_cov = 0.02 ** 2 * np.identity(256) + trans_mtx.T.dot(trans_mtx)
         x_cov = trans_mtx.T.dot(trans_mtx)
+        # print(x_cov[:10, :10])
 
         normal_z_sample = randn(TEST, Zdim)
         conditional_x_sample = z_pred.cpu().data.numpy().dot(trans_mtx)

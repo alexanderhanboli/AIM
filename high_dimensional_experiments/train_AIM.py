@@ -41,9 +41,9 @@ parser.add_argument('-b', '--batch-size', type=int, default=128, metavar='N',
 parser.add_argument('-e', '--epochs', type=int, default=100, metavar='E',
                     help='how many epochs to train (default: 100)')
 parser.add_argument('--lr-g', type=float, default=1e-4, metavar='LR',
-                    help='initial ADAM learning rate of G (default: 1e-3)')
+                    help='initial ADAM learning rate of G (default: 1e-4)')
 parser.add_argument('--lr-d', type=float, default=1e-4, metavar='LR',
-                    help='initial ADAM learning rate of D (default: 1e-3)')
+                    help='initial ADAM learning rate of D (default: 1e-4)')
 parser.add_argument('--decay', type=float, default=0, metavar='D',
                     help='weight decay or L2 penalty (default: 0)')
 parser.add_argument('-z', '--zdim', type=int, default=16, metavar='Z',
@@ -151,6 +151,10 @@ def train():
     # ==========================
     softplus = nn.Softplus()
     for epoch in range(opt.epochs):
+        Gx.train()
+        Gz.train()
+        Fe.train()
+        Dx.train()
         for i, (imgs, _) in enumerate(dataloader):
             batch_size = imgs.size(0)
             if cuda:
@@ -181,6 +185,7 @@ def train():
             Fe.zero_grad()
             loss_d.backward(retain_graph=True)
             optim_d.step()
+
             Gx.zero_grad()
             Gz.zero_grad()
             loss_ge.backward()
@@ -206,6 +211,10 @@ def train():
                    os.path.join(MODEL_PATH, 'Dx-%d.pth'  % (epoch+1)))
 
         # evaluate models
+        Gx.eval()
+        Gz.eval()
+        Fe.eval()
+        Dx.eval()
         x_eval = Gx(z_pred)
         x_eval = x_eval.data.cpu().numpy()
         for i, (imgs, _) in enumerate(validloader):
