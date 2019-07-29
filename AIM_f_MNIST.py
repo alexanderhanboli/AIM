@@ -23,6 +23,8 @@ import matplotlib.gridspec as gridspec
 import matplotlib.patches as patches
 plt.switch_backend('agg')
 
+from tqdm import tqdm, trange
+
 """Generator"""
 class Generator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
@@ -125,7 +127,6 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(0.1),
             nn.Linear(1024, 64),
             nn.Linear(64, self.output_dim),
-            nn.Sigmoid(),
         )
         utils.initialize_weights(self)
 
@@ -163,7 +164,7 @@ class Feature(nn.Module):
 # 6: increase the dimension of z(64 -> 128)
 ####
 
-class AIM_MNIST(object):
+class AIM_f_MNIST(object):
     def __init__(self, args):
         # parameters
         self.root = args.root
@@ -257,9 +258,6 @@ class AIM_MNIST(object):
             self.D.cuda()
             self.E.cuda()
             self.FC.cuda()
-            self.BCE_loss = nn.BCELoss().cuda()
-        else:
-            self.BCE_loss = nn.BCELoss()
 
         print('---------- Networks architecture -------------')
         utils.print_network(self.G)
@@ -290,15 +288,15 @@ class AIM_MNIST(object):
         self.train_hist['per_epoch_time'] = []
         self.train_hist['total_time'] = []
 
-        if torch.cuda.is_available():
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(torch.zeros(self.batch_size, 1).cuda())
-        else:
-            self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(torch.zeros(self.batch_size, 1))
+        # if torch.cuda.is_available():
+        #     self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1).cuda()), Variable(torch.zeros(self.batch_size, 1).cuda())
+        # else:
+        #     self.y_real_, self.y_fake_ = Variable(torch.ones(self.batch_size, 1)), Variable(torch.zeros(self.batch_size, 1))
 
         # self.D.train()
         print('training start!!')
         start_time = time.time()
-        for epoch in range(0, self.epoch):
+        for epoch in trange(self.epoch, desc='epoch'):
             self.G_optimizer.param_groups[0]['lr'] = self.args.lrG / np.sqrt(epoch + 1)
             self.D_optimizer.param_groups[0]['lr'] = self.args.lrD / np.sqrt(epoch + 1)
             # reset training mode of G and E
@@ -318,8 +316,8 @@ class AIM_MNIST(object):
             # self.E_optimizer.param_groups[0]['lr'] /= np.sqrt(epoch+1)
             # print("learning rate change!")
 
-
-            for iter, (X, _) in enumerate(self.data_loader):
+            total_len = self.data_loader.dataset.__len__() // self.batch_size
+            for iter, (X, _) in tqdm(enumerate(self.data_loader), total=total_len, desc='iteration'):
 
                 X = utils.to_var(X)
 
@@ -329,9 +327,9 @@ class AIM_MNIST(object):
                 X_hat = self.G(z)
                 D_real = self.D(self.FC(X))
                 D_fake = self.D(self.FC(X_hat))
-                D_loss = self.BCE_loss(D_real, self.y_real_) + self.BCE_loss(D_fake, self.y_fake_)
-                self.train_hist['D_loss'].append(D_loss.data[0])
-                D_err.append(D_loss.data[0])
+                D_loss = -1.0*(torch.mean(D_real) + torch.mean(-torch.exp(D_fake - 1.)))
+                self.train_hist['D_loss'].append(D_loss.data.item())
+                D_err.append(D_loss.data.item())
                 # Optimize
                 D_loss.backward()
                 self.D_optimizer.step()
@@ -347,17 +345,14 @@ class AIM_MNIST(object):
                 X_hat = self.G(z)
                 D_fake = self.D(self.FC(X_hat))
                 z_mu, z_sigma = self.E(self.FC(X_hat))
-                # E_loss = torch.mean(
-                #     torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) +
-                #                0.5 * z_sigma + 0.919, 1))
                 E_loss = torch.mean(
-                    torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) +
-                               0.5 * z_sigma + 0.919, 1))
-                G_loss = self.BCE_loss(D_fake, self.y_real_)
+                    torch.sum(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) +
+                               0.5 * z_sigma + 0.919, dim=1))
+                G_loss = -1.0*torch.mean(torch.exp(D_fake - 1.))
                 total_loss = G_loss + E_loss
-                self.train_hist['G_loss'].append(G_loss.data[0])
-                G_err.append(G_loss.data[0])
-                E_err.append(E_loss.data[0])
+                self.train_hist['G_loss'].append(G_loss.data.item())
+                G_err.append(G_loss.data.item())
+                E_err.append(E_loss.data.item())
                 # Optimize
                 total_loss.backward()
                 self.G_optimizer.step()
@@ -544,6 +539,12 @@ class AIM_MNIST(object):
         utils.save_images(samples[:, :, :, :], [row , row ],
                           os.path.join(save_dir, 'uniform' + '.png'))
 
+
+
+
+
+
+
     def visualize_results(self, X = None, epoch = 0):
         print("visualize results...")
 
@@ -624,7 +625,7 @@ class AIM_MNIST(object):
 
         images = []
         image_recons = []
-        for i in range(image_num/2):
+        for i in range(int(image_num/2)):
             image_recons.append(scipy.misc.bytescale(origins[i, :, :, :]))
             images.append(origins[i, :, :, :])
             image_recons.append(scipy.misc.bytescale(recons[i, :, :, :]))

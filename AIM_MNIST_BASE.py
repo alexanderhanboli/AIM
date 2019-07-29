@@ -119,7 +119,7 @@ class Feature(nn.Module):
 # 6: increase the dimension of z(64 -> 128)
 ####
 
-class LAI_MNIST_BASE(object):
+class AIM_MNIST_BASE(object):
     def __init__(self, args):
         # parameters
         self.root = args.root

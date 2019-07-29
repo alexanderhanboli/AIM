@@ -1,33 +1,34 @@
 import argparse, os
-#from LAI import LAI
-#from GLAI import GLAI
-#from dcLAI import dcLAI
+#from AIM import AIM
+#from GAIM import GAIM
+#from dcAIM import dcAIM
 from gaussian_example import MixedGaussian
-from LAI_celeb import zXzGAN_celebA
-from LAI_cifar10 import zXzGAN
-from LAI_MNIST import LAI_MNIST
-from LAI_imagenet import zXzGAN_IMAGE
-from cifar10_Baseline import zXzGAN_baseline
-from LAI_SLEEP import zXzGAN_sleep
-from LAI_MNIST_BASE import LAI_MNIST_BASE
-from MNIST_Z_Class import AIM_MNIST_CLASS
-from LAI_imagenet_base import zXzGAN_IMAGE_base
-from LAI_MNIST_CYCLE import LAI_MNIST_CYCLE
-from LAI_cifar10_cycle import zXzGAN_cycle
-from ALI_Gaussian import ALI_mg
-from VEEGAN import VEEGAN_mg
+from AIM_celeb import zXzGAN_celebA
+from AIM_cifar_10 import zXzGAN
+from AIM_MNIST import AIM_MNIST
+# from AIM_imagenet import zXzGAN_IMAGE
+# from cifar10_Baseline import zXzGAN_baseline
+# from AIM_SLEEP import zXzGAN_sleep
+from AIM_MNIST_BASE import AIM_MNIST_BASE
+# from MNIST_Z_Class import AIM_MNIST_CLASS
+# from AIM_imagenet_base import zXzGAN_IMAGE_base
+# from AIM_MNIST_CYCLE import AIM_MNIST_CYCLE
+# from AIM_cifar10_cycle import zXzGAN_cycle
+# from ALI_Gaussian import ALI_mg
+# from VEEGAN import VEEGAN_mg
+from AIM_f_MNIST import AIM_f_MNIST
 #from cifar_10_32 import zXzGAN
-#from LAI_cifar_10 import zXzGAN
-#from LAI_mix_gaussian_cl import LAI_mg_cl
-#from LAI_mix_gaussian import LAI_mg
+#from AIM_cifar_10 import zXzGAN
+#from AIM_mix_gaussian_cl import AIM_mg_cl
+#from AIM_mix_gaussian import AIM_mg
 
 """parsing and configuration"""
 def parse_args():
-    desc = "LAI pytorch implementation"
+    desc = "AIM pytorch implementation"
     parser = argparse.ArgumentParser(description=desc)
 
-    parser.add_argument('--root', type=str, default='/output', help='Root of the project')
-    parser.add_argument('--model_name', type=str, default='LAI', help='Model name')
+    parser.add_argument('--root', type=str, default='./output', help='Root of the project')
+    parser.add_argument('--model_name', type=str, default='AIM', help='Model name')
     parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist',
                                                                          'svhn', 'cifar10', 'celebA', 'image-net', 'mixed-Gaussian'],
                         help='The name of dataset')
@@ -41,21 +42,21 @@ def parse_args():
     parser.add_argument('--log_dir', type=str, default='logs',
                         help='Directory name to save training logs')
 
-    parser.add_argument('--lrG', type=float, default=2e-5)
-    parser.add_argument('--lrD', type=float, default=2e-5)
-    parser.add_argument('--lrE', type=float, default=2e-5)
+    parser.add_argument('--lrG', type=float, default=2e-6)
+    parser.add_argument('--lrD', type=float, default=2e-6)
+    parser.add_argument('--lrE', type=float, default=2e-6)
     parser.add_argument('--beta1', type=float, default=0.5)
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--z_dim', type=int, default=32)
     parser.add_argument('--prior', type=str, default='normal', choices=['normal', 'uniform'])
-    parser.add_argument('--load_model', type=bool, default=False)
-    parser.add_argument('--generate_images', type=bool, default=False)
-    parser.add_argument('--visualize', type=bool, default=False)
-    parser.add_argument('--sleep', type=bool, default=False)
-    parser.add_argument('--icp_eval', type=bool, default=False)
-    parser.add_argument('--mainfold', type=bool, default=False)
-    parser.add_argument('--varies', type=bool, default=False)
-    parser.add_argument('--uniform_sampling', type=bool, default=False)
+    parser.add_argument('--load_model', action='store_true', default=False)
+    parser.add_argument('--generate_images', action='store_true', default=False)
+    parser.add_argument('--visualize', action='store_true', default=False)
+    parser.add_argument('--sleep', action='store_true', default=False)
+    parser.add_argument('--icp_eval', action='store_true', default=False)
+    parser.add_argument('--mainfold', action='store_true', default=False)
+    parser.add_argument('--varies', action='store_true', default=False)
+    parser.add_argument('--uniform_sampling', action='store_true', default=False)
 
 
 
@@ -126,16 +127,19 @@ def main():
         else:
             gan = zXzGAN_celebA(args)
     elif args.dataset == 'mnist':
-        if args.model_name == 'LAI_MNIST_base':
-            gan = LAI_MNIST_BASE(args)
-        elif args.model_name == 'LAI_MNIST_cycle':
+        if args.model_name == 'AIM_MNIST_base':
+            gan = AIM_MNIST_BASE(args)
+        elif args.model_name == 'AIM_MNIST_cycle':
             print("cycle")
-            gan = LAI_MNIST_CYCLE(args)
+            gan = AIM_MNIST_CYCLE(args)
         elif args.model_name == 'AIM_MNIST_CLASS':
             print("icml rebutal")
             gan = AIM_MNIST_CLASS(args)
+        elif args.model_name == 'AIM_f_MNIST':
+            print("f-GAN AIM\n")
+            gan = AIM_f_MNIST(args)
         else:
-            gan = LAI_MNIST(args)
+            gan = AIM_MNIST(args)
 
     if args.generate_images:
         print("Generate Images")
