@@ -4,6 +4,8 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch.nn.functional as F
 
+from torch.nn.utils import spectral_norm
+
 class GeneratorX(nn.Module):
     def __init__(self, zd=16, xd=256):
         super().__init__()
@@ -42,7 +44,7 @@ class DiscriminatorX(nn.Module):
             nn.LeakyReLU(0.02),
             # nn.Dropout(0.1),
 
-            nn.Linear(xd//16, 1)
+            spectral_norm(nn.Linear(xd//16, 1))
         )
 
     def forward(self, x):
