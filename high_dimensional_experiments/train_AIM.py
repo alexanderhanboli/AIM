@@ -257,6 +257,20 @@ def train():
         print("The KL-divergence for X conditional is: {}".format(co.estimation(x_eval, conditional_x_sample)))
         # print("The KL-divergence between two X is {}".format(co.estimation(normal_x_sample, conditional_x_sample)))
 
+        # evaluate models
+        x_eval = Gx(z_pred)
+        for i, (imgs, _) in enumerate(validloader):
+            if cuda:
+                imgs = imgs.cuda()
+            imgs = Variable(imgs)
+            z_eval = Gz(imgs)
+            break
+        print(len(z_eval.data))
+        z_logli = -torch.mean(torch.mean(0.5 * z_eval ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
+        print("log-likehood of z is {}".format(z_logli.data))
+
+        # x_logli = -torch.mean(torch.mean(0.5 * (x_eval - MEAN) ** 2 + 0.5 + 0.5 * np.log(2*np.pi), 1))
+        # print("log-likehood of x is {}".format(x_logli.data))
 
 if __name__ == '__main__':
     train()
