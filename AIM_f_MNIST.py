@@ -327,11 +327,14 @@ class AIM_f_MNIST(object):
                 X_hat = self.G(z)
                 D_real = self.D(self.FC(X))
                 D_fake = self.D(self.FC(X_hat))
-                D_loss = -1.0*(torch.mean(D_real) + torch.mean(-torch.exp(D_fake - 1.)))
+                D_loss = -1.0*torch.mean( D_real - torch.exp(D_fake-1.0) )
                 self.train_hist['D_loss'].append(D_loss.data.item())
                 D_err.append(D_loss.data.item())
                 # Optimize
                 D_loss.backward()
+                # gradient clipping
+                torch.nn.utils.clip_grad_norm_(chain(self.D.parameters(), self.FC.parameters()), 1.0)
+                # update
                 self.D_optimizer.step()
                 self.__reset_grad()
 
@@ -346,15 +349,20 @@ class AIM_f_MNIST(object):
                 D_fake = self.D(self.FC(X_hat))
                 z_mu, z_sigma = self.E(self.FC(X_hat))
                 E_loss = torch.mean(
-                    torch.sum(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) +
+                    torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) +
                                0.5 * z_sigma + 0.919, dim=1))
-                G_loss = -1.0*torch.mean(torch.exp(D_fake - 1.))
+                # G_loss = torch.mean( -1.0 * torch.exp(D_fake-1.0) )
+                # G_loss = torch.mean( torch.exp(-D_fake) ) # deal with gradient vanish
+                G_loss = -1.0*torch.mean( D_fake ) # deal with gradient vanish 2
                 total_loss = G_loss + E_loss
                 self.train_hist['G_loss'].append(G_loss.data.item())
                 G_err.append(G_loss.data.item())
                 E_err.append(E_loss.data.item())
                 # Optimize
                 total_loss.backward()
+                # gradient clipping
+                torch.nn.utils.clip_grad_norm_(chain(self.G.parameters(), self.E.parameters()), 1.0)
+                # update
                 self.G_optimizer.step()
                 self.E_optimizer.step()
                 self.__reset_grad()
@@ -390,7 +398,7 @@ class AIM_f_MNIST(object):
 
 
     def manifold(self, epoch):
-        save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name)
+        save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name, str(self.args.seed_random))
         self.load(epoch)
         self.G.eval()
         self.E.eval()
@@ -501,7 +509,7 @@ class AIM_f_MNIST(object):
                     k += 10
 
             images = np.array(new_images)
-            save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name)
+            save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name, str(self.args.seed_random))
             utils.save_images(images[:, :, :, :], [row, row],
                               os.path.join(save_dir, 'variational' + '_epoch%03d' % (epoch+1) + '.png'))
 
@@ -516,7 +524,7 @@ class AIM_f_MNIST(object):
 
     def uniform(self):
         self.load(399)
-        save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name)
+        save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name, str(self.args.seed_random))
         self.G.eval()
         row = 15
         z_axis = np.linspace(-2.0, 2.0, num = row )
@@ -555,7 +563,7 @@ class AIM_f_MNIST(object):
         nrows = 8
         ncols = 8
         reconstruc = True
-        save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name)
+        save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name, str(self.args.seed_random))
 
 
         if X is None:
@@ -722,7 +730,7 @@ class AIM_f_MNIST(object):
         self.get_mse(epoch)
         self.G.eval()
 
-        save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name)
+        save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name, str(self.args.seed_random))
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 

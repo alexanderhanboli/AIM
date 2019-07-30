@@ -22,13 +22,16 @@ from AIM_f_MNIST import AIM_f_MNIST
 #from AIM_mix_gaussian_cl import AIM_mg_cl
 #from AIM_mix_gaussian import AIM_mg
 
+import torch
+import numpy as np
+
 """parsing and configuration"""
 def parse_args():
     desc = "AIM pytorch implementation"
     parser = argparse.ArgumentParser(description=desc)
 
     parser.add_argument('--root', type=str, default='./output', help='Root of the project')
-    parser.add_argument('--model_name', type=str, default='AIM', help='Model name')
+    parser.add_argument('--model_name', type=str, default='AIM_f_MNIST', help='Model name')
     parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist',
                                                                          'svhn', 'cifar10', 'celebA', 'image-net', 'mixed-Gaussian'],
                         help='The name of dataset')
@@ -42,9 +45,9 @@ def parse_args():
     parser.add_argument('--log_dir', type=str, default='logs',
                         help='Directory name to save training logs')
 
-    parser.add_argument('--lrG', type=float, default=2e-6)
-    parser.add_argument('--lrD', type=float, default=2e-6)
-    parser.add_argument('--lrE', type=float, default=2e-6)
+    parser.add_argument('--lrG', type=float, default=2e-5)
+    parser.add_argument('--lrD', type=float, default=2e-5)
+    parser.add_argument('--lrE', type=float, default=2e-5)
     parser.add_argument('--beta1', type=float, default=0.5)
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--z_dim', type=int, default=32)
@@ -58,9 +61,7 @@ def parse_args():
     parser.add_argument('--varies', action='store_true', default=False)
     parser.add_argument('--uniform_sampling', action='store_true', default=False)
 
-
-
-
+    parser.add_argument('--seed_random', default=42, type=int)
 
 
     return check_args(parser.parse_args())
@@ -100,6 +101,11 @@ def main():
     if args is None:
         exit()
 
+    # set seed
+    torch.manual_seed(args.seed_random)
+    np.random.seed(args.seed_random)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed_random)
 
     if args.dataset == 'mixed-Gaussian':
          gan = MixedGaussian(args)
