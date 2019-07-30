@@ -734,7 +734,7 @@ class AIM_f_MNIST(object):
         self.load(epoch)
 
         self.get_mse(epoch)
-        
+
         self.G.eval()
 
         save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name, str(self.args.seed_random))

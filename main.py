@@ -6,6 +6,7 @@ from gaussian_example import MixedGaussian
 from gan_mix_gaussian import GAN_MixedGaussian
 from AIM_celeb import zXzGAN_celebA
 from AIM_cifar_10 import zXzGAN
+from AIM_f_cifar_10 import f_zXzGAN
 from AIM_MNIST import AIM_MNIST
 # from AIM_imagenet import zXzGAN_IMAGE
 # from cifar10_Baseline import zXzGAN_baseline
@@ -51,7 +52,7 @@ def parse_args():
     parser.add_argument('--lrE', type=float, default=2e-5)
     parser.add_argument('--beta1', type=float, default=0.5)
     parser.add_argument('--beta2', type=float, default=0.999)
-    parser.add_argument('--z_dim', type=int, default=32)
+    parser.add_argument('--z_dim', type=int, default=64)
     parser.add_argument('--prior', type=str, default='normal', choices=['normal', 'uniform'])
     parser.add_argument('--load_model', action='store_true', default=False)
     parser.add_argument('--generate_images', action='store_true', default=False)
@@ -116,13 +117,15 @@ def main():
          #gan = ALI_mg(args)
          # gan = VEEGAN_mg(args)
     elif args.dataset == 'cifar10':
-        print(args.model_name)
         if args.model_name == 'zXzGAN_baseline':
             gan = zXzGAN_baseline(args)
             print("CIFAR BASELINE")
         elif args.model_name == 'zXzGAN_cycle':
             print("cycle")
             gan = zXzGAN_cycle(args)
+        elif args.model_name == 'zXzGAN_f':
+            print("cifar f-AIM")
+            gan = f_zXzGAN(args)
         else:
             gan = zXzGAN(args)
     elif args.dataset == 'image-net':
@@ -178,10 +181,10 @@ def main():
     else:
         print("train")
         gan.train()
-        for epoch in range(200, 300, 20):
-            print(epoch)
-            #epoch = 3
-            gan.get_mse(epoch-1)
+        # for epoch in range(200, 300, 20):
+        #     print(epoch)
+        #     #epoch = 3
+        #     gan.get_mse(epoch-1)
 
 
 

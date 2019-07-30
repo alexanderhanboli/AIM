@@ -154,7 +154,7 @@ class Discriminator(nn.Module):
             nn.BatchNorm1d(self.hid_dim),
             nn.LeakyReLU(0.2),
             nn.Linear(self.hid_dim, self.output_dim),
-            nn.Sigmoid(),
+            # nn.Sigmoid(),
         )
         utils.initialize_weights(self)
 
@@ -261,10 +261,16 @@ class MixedGaussian(object):
                 X_hat = self.G(z)
                 z_mu, z_sigma = self.E(self.FC(X_hat))
 
-                D_loss = self.BCE_loss(D_real, self.y_real_) + self.BCE_loss(D_fake, self.y_fake_)
+                # D_loss = self.BCE_loss(D_real, self.y_real_) + self.BCE_loss(D_fake, self.y_fake_)
+                D_loss = -1.0*torch.mean( D_real - torch.exp(D_fake-1.0) )
+
                 self.train_hist['D_loss'].append(D_loss.data.item())
                 # Optimize
                 D_loss.backward()
+
+                # gradient clipping
+                torch.nn.utils.clip_grad_value_(chain(self.D.parameters(), self.FC.parameters()), 1.0)
+
                 self.D_optimizer.step()
                 self.__reset_grad()
 
@@ -293,11 +299,18 @@ class MixedGaussian(object):
                 z_mu, z_sigma = self.E(self.FC(X_hat))
                 mode_loss = torch.mean(
                     torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189, 1))
-                G_loss = self.BCE_loss(D_fake, self.y_real_)
+
+                # G_loss = self.BCE_loss(D_fake, self.y_real_)
+                G_loss = -1.0*torch.mean( D_fake ) # deal with gradient vanish 2
+
                 total_loss = G_loss + mode_loss
                 self.train_hist['G_loss'].append(G_loss.data.item())
                 # Optimize
                 total_loss.backward()
+
+                # gradient clipping
+                torch.nn.utils.clip_grad_value_(chain(self.G.parameters()), 1.0)
+
                 self.G_optimizer.step()
                 self.__reset_grad()
 

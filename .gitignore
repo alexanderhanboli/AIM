@@ -47,3 +47,5 @@ floyd_requirements.txt
 
 *.pth
 *.png
+
+output/
