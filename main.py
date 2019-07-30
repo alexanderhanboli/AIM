@@ -3,6 +3,7 @@ import argparse, os
 #from GAIM import GAIM
 #from dcAIM import dcAIM
 from gaussian_example import MixedGaussian
+from gan_mix_gaussian import GAN_MixedGaussian
 from AIM_celeb import zXzGAN_celebA
 from AIM_cifar_10 import zXzGAN
 from AIM_MNIST import AIM_MNIST
@@ -35,7 +36,7 @@ def parse_args():
     parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist',
                                                                          'svhn', 'cifar10', 'celebA', 'image-net', 'mixed-Gaussian'],
                         help='The name of dataset')
-    parser.add_argument('--epoch', type=int, default=25, help='The number of epochs to run')
+    parser.add_argument('--epoch', type=int, default=300, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=100, help='The size of batch')
 
     parser.add_argument('--save_dir', type=str, default='models',
@@ -108,9 +109,12 @@ def main():
         torch.cuda.manual_seed(args.seed_random)
 
     if args.dataset == 'mixed-Gaussian':
-         gan = MixedGaussian(args)
+        if args.model_name == 'AIM':
+            gan = MixedGaussian(args)
+        elif args.model_name == 'GAN':
+            gan = GAN_MixedGaussian(args)
          #gan = ALI_mg(args)
-         gan = VEEGAN_mg(args)
+         # gan = VEEGAN_mg(args)
     elif args.dataset == 'cifar10':
         print(args.model_name)
         if args.model_name == 'zXzGAN_baseline':
@@ -149,7 +153,7 @@ def main():
 
     if args.generate_images:
         print("Generate Images")
-        gan.generate_images()
+        gan.generate_images(49)
     elif args.visualize:
         #for epoch in range(109,30,10):
         epoch = 599

@@ -69,6 +69,7 @@ else:
     print("Saving...")
     with open('mtx', 'wb+') as f:
         pickle.dump(MTX, f)
+        
 MEANS = [np.zeros(16)]
 VARIANCES = [1.0 ** 2 * np.eye(len(mean)) for mean in MEANS]
 # MEANS = [np.zeros(256)]

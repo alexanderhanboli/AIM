@@ -316,6 +316,8 @@ class AIM_f_MNIST(object):
             # self.E_optimizer.param_groups[0]['lr'] /= np.sqrt(epoch+1)
             # print("learning rate change!")
 
+            scale = min(1.0, (1.0/32.)*(epoch + 1)) # linear warm-up
+
             total_len = self.data_loader.dataset.__len__() // self.batch_size
             for iter, (X, _) in tqdm(enumerate(self.data_loader), total=total_len, desc='iteration'):
 
@@ -333,7 +335,7 @@ class AIM_f_MNIST(object):
                 # Optimize
                 D_loss.backward()
                 # gradient clipping
-                torch.nn.utils.clip_grad_norm_(chain(self.D.parameters(), self.FC.parameters()), 1.0)
+                torch.nn.utils.clip_grad_value_(chain(self.D.parameters(), self.FC.parameters()), 1.0)
                 # update
                 self.D_optimizer.step()
                 self.__reset_grad()
@@ -349,19 +351,23 @@ class AIM_f_MNIST(object):
                 D_fake = self.D(self.FC(X_hat))
                 z_mu, z_sigma = self.E(self.FC(X_hat))
                 E_loss = torch.mean(
-                    torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) +
+                    torch.sum(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) +
                                0.5 * z_sigma + 0.919, dim=1))
+
                 # G_loss = torch.mean( -1.0 * torch.exp(D_fake-1.0) )
                 # G_loss = torch.mean( torch.exp(-D_fake) ) # deal with gradient vanish
                 G_loss = -1.0*torch.mean( D_fake ) # deal with gradient vanish 2
-                total_loss = G_loss + E_loss
+                # G_loss = torch.mean( (2.0-D_fake)*(D_fake >= 1).float() + torch.exp(1.0-D_fake)**(D_fake < 1).float() )
+                # G_loss = torch.mean( (2.0-torch.exp(D_fake-1.0))*(D_fake >= 1).float() + torch.exp(1.0-D_fake)**(D_fake < 1).float() )
+
+                total_loss = G_loss + scale * E_loss
                 self.train_hist['G_loss'].append(G_loss.data.item())
                 G_err.append(G_loss.data.item())
                 E_err.append(E_loss.data.item())
                 # Optimize
                 total_loss.backward()
                 # gradient clipping
-                torch.nn.utils.clip_grad_norm_(chain(self.G.parameters(), self.E.parameters()), 1.0)
+                torch.nn.utils.clip_grad_value_(chain(self.G.parameters(), self.E.parameters()), 1.0)
                 # update
                 self.G_optimizer.step()
                 self.E_optimizer.step()
@@ -614,16 +620,16 @@ class AIM_f_MNIST(object):
 
 
         if torch.cuda.is_available():
-            print('Mu is {};\n Sigma is {}\n'
-                  .format(mu.cpu().data.numpy()[0,:], sigma.cpu().data.numpy()[0,:]))
+            # print('Mu is {};\n Sigma is {}\n'
+            #       .format(mu.cpu().data.numpy()[0,:], sigma.cpu().data.numpy()[0,:]))
             samples = X_hat.cpu().data.numpy().transpose(0, 2, 3, 1) # 1
             origins = X.cpu().data.numpy().transpose(0, 2, 3, 1) # 2
             recons = X_rec.cpu().data.numpy().transpose(0, 2, 3, 1) # 3
             recons_1 = X_rec1.cpu().data.numpy().transpose(0, 2, 3, 1) # 3
             recons_2 = X_rec2.cpu().data.numpy().transpose(0, 2, 3, 1)  # 3
         else:
-            print('Mu is {};\n Sigma is {}\n'
-                  .format(mu.data.numpy()[0,:], sigma.data.numpy()[0,:]))
+            # print('Mu is {};\n Sigma is {}\n'
+            #       .format(mu.data.numpy()[0,:], sigma.data.numpy()[0,:]))
             samples = X_hat.data.numpy().transpose(0, 2, 3, 1)
             origins = X.data.numpy().transpose(0, 2, 3, 1) # 2
             recons = X_rec.data.numpy().transpose(0, 2, 3, 1)  # 3
@@ -714,7 +720,7 @@ class AIM_f_MNIST(object):
             else:
                 final_loss = np.concatenate((final_loss, loss), 0)
 
-        print(final_loss.shape)
+        # print(final_loss.shape)
 
 
         print( "Final mse mean is %.5f, std is %.5f" %(np.mean(final_loss), np.std(final_loss)))
@@ -728,6 +734,7 @@ class AIM_f_MNIST(object):
         self.load(epoch)
 
         self.get_mse(epoch)
+        
         self.G.eval()
 
         save_dir = os.path.join(self.root, self.result_dir, self.dataset, self.model_name, str(self.args.seed_random))
@@ -739,7 +746,7 @@ class AIM_f_MNIST(object):
         images = []
 
         for k in range(K):
-            for iter in range(total_num / batch_size):
+            for iter in range(int(total_num / batch_size)):
                 # Reconstruction and generation
                 z = utils.to_var(torch.randn(batch_size, self.z_dim))
                 X_hat = self.G(z)  # randomly generated sample

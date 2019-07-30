@@ -84,6 +84,38 @@ if not os.path.exists(MODEL_PATH):
     os.mkdir(MODEL_PATH)
 
 
+def count(xx):
+    import itertools
+    import collections
+    #X = [-2.5, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2]
+    # Y = [-700, 700, 0, -1400, 1400]
+    # MEANS = []
+    # for x in X:
+    #     MEANS.append(np.array([x] * 700 + [0]*500))
+    #VARIANCES = [0.05 ** 2 * np.eye(len(mean)) for mean in MEANS]
+    #MEANS = [x + [0] * 500 for x in MEANS]
+
+    MEANS = [np.array([i, j]) for i, j in itertools.product(range(-4, 5, 2),
+                                                            range(-4, 5, 2))]
+    VARIANCES = [0.05 ** 2 * np.eye(len(mean)) for mean in MEANS]
+    SIGMA = np.log(0.05**2)
+
+    l2_store = []
+    for x_ in xx:
+        l2_store.append([np.sum((x_ - i) ** 2) for i in MEANS])
+
+    mode = np.argmin(l2_store, 1).flatten().tolist()
+    dis_ = [l2_store[j][i] for j, i in enumerate(mode)]
+    loglikehood_list = [-1.0*(np.sum(0.5 * (xx[j] - MEANS[i]) ** 2 * np.exp(-SIGMA) + 0.5 * SIGMA + 0.5 * np.log(2*np.pi))) for j, i in enumerate(mode)]
+    loglikehood = np.mean(loglikehood_list)
+    print(np.sqrt(dis_[0]))
+    mode_counter = [mode[i] for i in range(len(mode)) if (np.sqrt(dis_[i])) <= 0.5]
+
+    print('Number of Modes Captured: ', len(collections.Counter(mode_counter)))
+    print('Number of Points Falling Within 3 std. of the Nearest Mode ', np.sum(
+        collections.Counter(mode_counter).values()))
+    print('Loglikehood is: ', loglikehood)
+
 
 def prog_print(e,b,b_total,loss_g,loss_d):
     sys.stdout.write("\r%3d: [%5d / %5d] G: %.4f D: %.4f" %
@@ -178,6 +210,7 @@ def train():
         # evaluate models
         x_eval = Gx(z_pred)
         x_eval = x_eval.data.cpu().numpy()
+        count(x_eval)
 
         from numpy.random import multivariate_normal, randn
         x_mean = np.zeros(256)

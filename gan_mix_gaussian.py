@@ -34,6 +34,7 @@ plt.switch_backend('agg')
 import Gaussian_Sample as GS
 
 
+
 """Generator"""
 class Generator(nn.Module):
     def __init__(self, G_dim = 400):
@@ -113,13 +114,13 @@ class FeatureExtrator(nn.Module):
         # TODO
         # This is a naive maxout implementation. Should be updated later.
         self.fc = nn.Sequential(
-            nn.Linear(self.input_dim, self.hid_dim * self.maxout_pieces),
+            torch.nn.utils.spectral_norm(nn.Linear(self.input_dim, self.hid_dim * self.maxout_pieces)),
         )
         self.fcmax1 = nn.Sequential(
-            nn.Linear(self.hid_dim, self.hid_dim * self.maxout_pieces),
+            torch.nn.utils.spectral_norm(nn.Linear(self.hid_dim, self.hid_dim * self.maxout_pieces)),
         )
         self.fcmax2 = nn.Sequential(
-            nn.Linear(self.hid_dim, self.hid_dim * self.maxout_pieces),
+            torch.nn.utils.spectral_norm(nn.Linear(self.hid_dim, self.hid_dim * self.maxout_pieces)),
         )
 
         utils.initialize_weights(self)
@@ -150,8 +151,8 @@ class Discriminator(nn.Module):
         # This is a naive maxout implementation. Should be updated later.
 
         self.fo = nn.Sequential(
-            nn.Linear(self.hid_dim, self.hid_dim),
-            nn.BatchNorm1d(self.hid_dim),
+            torch.nn.utils.spectral_norm(nn.Linear(self.hid_dim, self.hid_dim)),
+            # nn.BatchNorm1d(self.hid_dim),
             nn.LeakyReLU(0.2),
             nn.Linear(self.hid_dim, self.output_dim),
             nn.Sigmoid(),
@@ -164,7 +165,7 @@ class Discriminator(nn.Module):
 
         return x
 
-class MixedGaussian(object):
+class GAN_MixedGaussian(object):
     def __init__(self, args):
         # parameters
         self.root = args.root
@@ -294,7 +295,7 @@ class MixedGaussian(object):
                 mode_loss = torch.mean(
                     torch.mean(0.5 * (z - z_mu) ** 2 * torch.exp(-z_sigma) + 0.5 * z_sigma + 0.9189, 1))
                 G_loss = self.BCE_loss(D_fake, self.y_real_)
-                total_loss = G_loss + mode_loss
+                total_loss = G_loss
                 self.train_hist['G_loss'].append(G_loss.data.item())
                 # Optimize
                 total_loss.backward()
