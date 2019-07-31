@@ -81,14 +81,14 @@ class Encoder(nn.Module):
 
         utils.initialize_weights(self)
         self.fc_mu = nn.Sequential(
-            nn.Linear(self.hid_dim, self.hid_dim),
-            nn.BatchNorm1d(self.hid_dim),
+            torch.nn.utils.spectral_norm(nn.Linear(self.hid_dim, self.hid_dim)),
+            # nn.BatchNorm1d(self.hid_dim),
             nn.ReLU(),
             nn.Linear(self.hid_dim, self.output_dim),
         )
         self.fc_sigma = nn.Sequential(
-            nn.Linear(self.hid_dim, self.hid_dim),
-            nn.BatchNorm1d(self.hid_dim),
+            torch.nn.utils.spectral_norm(nn.Linear(self.hid_dim, self.hid_dim)),
+            # nn.BatchNorm1d(self.hid_dim),
             nn.ReLU(),
             nn.Linear(self.hid_dim, self.output_dim),
         )
@@ -113,13 +113,13 @@ class FeatureExtrator(nn.Module):
         # TODO
         # This is a naive maxout implementation. Should be updated later.
         self.fc = nn.Sequential(
-            nn.Linear(self.input_dim, self.hid_dim * self.maxout_pieces),
+            torch.nn.utils.spectral_norm(nn.Linear(self.input_dim, self.hid_dim * self.maxout_pieces)),
         )
         self.fcmax1 = nn.Sequential(
-            nn.Linear(self.hid_dim, self.hid_dim * self.maxout_pieces),
+            torch.nn.utils.spectral_norm(nn.Linear(self.hid_dim, self.hid_dim * self.maxout_pieces)),
         )
         self.fcmax2 = nn.Sequential(
-            nn.Linear(self.hid_dim, self.hid_dim * self.maxout_pieces),
+            torch.nn.utils.spectral_norm(nn.Linear(self.hid_dim, self.hid_dim * self.maxout_pieces)),
         )
 
         utils.initialize_weights(self)
@@ -150,8 +150,8 @@ class Discriminator(nn.Module):
         # This is a naive maxout implementation. Should be updated later.
 
         self.fo = nn.Sequential(
-            nn.Linear(self.hid_dim, self.hid_dim),
-            nn.BatchNorm1d(self.hid_dim),
+            torch.nn.utils.spectral_norm(nn.Linear(self.hid_dim, self.hid_dim)),
+            # nn.BatchNorm1d(self.hid_dim),
             nn.LeakyReLU(0.2),
             nn.Linear(self.hid_dim, self.output_dim),
             # nn.Sigmoid(),
@@ -385,7 +385,7 @@ class MixedGaussian(object):
         self.E.eval()
         self.FC.eval()
 
-        save_dir = os.path.join(self.root, self.result_dir, 'mixed_gaussian', self.model_name)
+        save_dir = os.path.join(self.root, self.result_dir, 'mixed_gaussian', self.model_name, str(self.args.seed_random))
         print(save_dir)
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
